@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -392,6 +393,146 @@ func processRequestConcurrent(ctx context.Context, cancel context.CancelFunc, re
 }
 
 func processRequestByType(ctx context.Context, req any, responseChan chan<- any) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("LND is panicking: %v", string(debug.Stack()))
+
+			communicationResponse := lightning_helpers.CommunicationResponse{
+				Status: lightning_helpers.Inactive,
+				Error:  fmt.Sprintf("LND is panicking: %v", err),
+			}
+			importResponse := ImportResponse{
+				CommunicationResponse: communicationResponse,
+				Error:                 errors.New(fmt.Sprintf("LND is panicking: %v", err)),
+			}
+			switch r := req.(type) {
+			case lightning_helpers.InformationRequest:
+				responseChan <- lightning_helpers.InformationResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.SignMessageRequest:
+				responseChan <- lightning_helpers.SignMessageResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.SignatureVerificationRequest:
+				responseChan <- lightning_helpers.SignatureVerificationResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.RoutingPolicyUpdateRequest:
+				responseChan <- lightning_helpers.RoutingPolicyUpdateResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.ConnectPeerRequest:
+				responseChan <- lightning_helpers.ConnectPeerResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.DisconnectPeerRequest:
+				responseChan <- lightning_helpers.DisconnectPeerResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.WalletBalanceRequest:
+				responseChan <- lightning_helpers.WalletBalanceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.ListPeersRequest:
+				responseChan <- lightning_helpers.ListPeersResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewAddressRequest:
+				responseChan <- lightning_helpers.NewAddressResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.OpenChannelRequest:
+				responseChan <- lightning_helpers.OpenChannelResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.CloseChannelRequest:
+				responseChan <- lightning_helpers.CloseChannelResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewInvoiceRequest:
+				responseChan <- lightning_helpers.NewInvoiceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.OnChainPaymentRequest:
+				responseChan <- lightning_helpers.OnChainPaymentResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewPaymentRequest:
+				responseChan <- lightning_helpers.NewPaymentResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.DecodeInvoiceRequest:
+				responseChan <- lightning_helpers.DecodeInvoiceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case ImportAllChannelsRequest:
+				responseChan <- ImportAllChannelsResponse{
+					Request:        r,
+					ImportResponse: importResponse,
+				}
+				return
+			case ImportPendingChannelsRequest:
+				responseChan <- ImportPendingChannelsResponse{
+					Request:        r,
+					ImportResponse: importResponse,
+				}
+				return
+			case ImportChannelRoutingPoliciesRequest:
+				responseChan <- ImportChannelRoutingPoliciesResponse{
+					Request:        r,
+					ImportResponse: importResponse,
+				}
+				return
+			case ImportNodeInformationRequest:
+				responseChan <- ImportNodeInformationResponse{
+					Request:        r,
+					ImportResponse: importResponse,
+				}
+				return
+			case ImportPeerStatusRequest:
+				responseChan <- ImportPeerStatusResponse{
+					Request:        r,
+					ImportResponse: importResponse,
+				}
+				return
+			}
+			responseChan <- nil
+			return
+		}
+	}()
+
 	switch r := req.(type) {
 	case lightning_helpers.InformationRequest:
 		responseChan <- processGetInfoRequest(ctx, r)
@@ -1406,12 +1547,12 @@ func constructRouteHints(routeHints []*lnrpc.RouteHint) []lightning_helpers.Rout
 		var hopHints []lightning_helpers.HopHint
 		for _, hh := range rh.HopHints {
 			hopHints = append(hopHints, lightning_helpers.HopHint{
-				LNDShortChannelId: hh.ChanId,
-				ShortChannelId:    core.ConvertLNDShortChannelID(hh.ChanId),
-				NodeId:            hh.NodeId,
-				FeeBase:           hh.FeeBaseMsat,
-				CltvExpiryDelta:   hh.CltvExpiryDelta,
-				FeeProportional:   hh.FeeProportionalMillionths,
+				LNDShortChannelId:      hh.ChanId,
+				ShortChannelId:         core.ConvertLNDShortChannelID(hh.ChanId),
+				ChannelSourcePublicKey: hh.NodeId,
+				FeeBaseMsat:            hh.FeeBaseMsat,
+				CltvExpiryDelta:        hh.CltvExpiryDelta,
+				FeeProportional:        hh.FeeProportionalMillionths,
 			})
 		}
 		r = append(r, lightning_helpers.RouteHint{
@@ -1444,7 +1585,7 @@ func constructDecodedInvoice(decodedInvoice *lnrpc.PayReq,
 	response.Memo = decodedInvoice.Description
 	response.ValueMsat = decodedInvoice.NumMsat
 	response.FallbackAddr = decodedInvoice.FallbackAddr
-	response.CreatedAt = decodedInvoice.Timestamp
+	response.CreatedAt = time.Unix(decodedInvoice.Timestamp, 0)
 	response.Expiry = decodedInvoice.Expiry
 	response.CltvExpiry = decodedInvoice.CltvExpiry
 	response.RouteHints = constructRouteHints(decodedInvoice.RouteHints)
@@ -1480,18 +1621,22 @@ func processDecodeInvoiceRequest(ctx context.Context,
 		return response
 	}
 
-	nodeInfo, err := client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{
-		PubKey:          decodedInvoice.Destination,
-		IncludeChannels: false,
-	})
-	if err != nil {
-		response.Error = err.Error()
-		return response
-	}
-
 	response = constructDecodedInvoice(decodedInvoice, response)
-	response.NodeAlias = nodeInfo.Node.Alias
-
+	nodeSettings := cache.GetNodeSettingsByNodeId(response.Request.NodeId)
+	response.NodeAlias = cache.GetNodeAlias(cache.GetPeerNodeIdByPublicKey(response.DestinationPubKey, nodeSettings.Chain, nodeSettings.Network))
+	if response.NodeAlias == "" {
+		nodeInfo, err := client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{
+			PubKey:          decodedInvoice.Destination,
+			IncludeChannels: false,
+		})
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to obtain node alias for public key: %v", response.DestinationPubKey)
+			return response
+		}
+		if nodeInfo != nil && nodeInfo.Node != nil {
+			response.NodeAlias = nodeInfo.Node.Alias
+		}
+	}
 	return response
 }
 

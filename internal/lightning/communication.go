@@ -491,7 +491,7 @@ func DecodeInvoice(request lightning_helpers.DecodeInvoiceRequest) (lightning_he
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.DecodeInvoiceResponse{}, ServiceInactiveError
 		}
-		return lightning_helpers.DecodeInvoiceResponse{}, UnsupportedOperationError
+		response = cln.DecodeInvoice(request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.DecodeInvoiceResponse{}, errors.New(response.Error)

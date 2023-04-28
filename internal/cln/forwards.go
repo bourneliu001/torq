@@ -85,22 +85,26 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 		unprocessedShortChannelIds = append(unprocessedShortChannelIds, *channel.ShortChannelId)
 	}
 
-	err := processForwards(ctx, db, client, cln.ListforwardsRequest_SETTLED, unprocessedShortChannelIds, nodeSettings)
+	err := processForwards(ctx, db, client, serviceType,
+		cln.ListforwardsRequest_SETTLED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrapf(err, "processing of forwards failed")
 	}
 	if cache.GetNodeConnectionDetails(nodeSettings.NodeId).CustomSettings.
 		HasNodeConnectionDetailCustomSettings(core.ImportHtlcEvents) {
 
-		err = processForwards(ctx, db, client, cln.ListforwardsRequest_OFFERED, unprocessedShortChannelIds, nodeSettings)
+		err = processForwards(ctx, db, client, serviceType,
+			cln.ListforwardsRequest_OFFERED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
-		err = processForwards(ctx, db, client, cln.ListforwardsRequest_LOCAL_FAILED, unprocessedShortChannelIds, nodeSettings)
+		err = processForwards(ctx, db, client, serviceType,
+			cln.ListforwardsRequest_LOCAL_FAILED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
-		err = processForwards(ctx, db, client, cln.ListforwardsRequest_FAILED, unprocessedShortChannelIds, nodeSettings)
+		err = processForwards(ctx, db, client, serviceType,
+			cln.ListforwardsRequest_FAILED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
@@ -116,9 +120,11 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 func processForwards(ctx context.Context,
 	db *sqlx.DB,
 	client client_ListForwards,
+	serviceType services_helpers.ServiceType,
 	clnStatus cln.ListforwardsRequest_ListforwardsStatus,
 	unprocessedShortChannelIds []string,
-	nodeSettings cache.NodeSettingsCache) error {
+	nodeSettings cache.NodeSettingsCache,
+	bootStrapping bool) error {
 
 	for _, shortChannelId := range unprocessedShortChannelIds {
 		clnForwards, err := client.ListForwards(ctx, &cln.ListforwardsRequest{InChannel: &shortChannelId, Status: &clnStatus})
@@ -139,6 +145,9 @@ func processForwards(ctx context.Context,
 		err = storeForwards(db, clnStatus, clnForwards.Forwards, "", shortChannelId, nodeSettings)
 		if err != nil {
 			return errors.Wrapf(err, "storing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
+		}
+		if bootStrapping {
+			cache.SetInitializingNodeServiceState(serviceType, nodeSettings.NodeId)
 		}
 	}
 	return nil

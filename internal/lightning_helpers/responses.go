@@ -198,12 +198,12 @@ type NewPaymentResponse struct {
 type FeatureMap map[uint32]Feature
 
 type HopHint struct {
-	LNDShortChannelId uint64 `json:"lndShortChannelId"`
-	ShortChannelId    string `json:"shortChannelId"`
-	NodeId            string `json:"localNodeId"`
-	FeeBase           uint32 `json:"feeBase"`
-	CltvExpiryDelta   uint32 `json:"cltvExpiryDelta"`
-	FeeProportional   uint32 `json:"feeProportionalMillionths"`
+	LNDShortChannelId      uint64 `json:"lndShortChannelId"`
+	ShortChannelId         string `json:"shortChannelId"`
+	ChannelSourcePublicKey string `json:"channelSourcePublicKey"`
+	FeeBaseMsat            uint32 `json:"feeBaseMsat"`
+	CltvExpiryDelta        uint32 `json:"cltvExpiryDelta"`
+	FeeProportional        uint32 `json:"feeProportionalMillionths"`
 }
 
 type RouteHint struct {
@@ -222,7 +222,8 @@ type DecodeInvoiceResponse struct {
 	PaymentAddr       string      `json:"paymentAddr"`
 	FallbackAddr      string      `json:"fallbackAddr"`
 	Expiry            int64       `json:"expiry"`
-	CreatedAt         int64       `json:"createdAt"`
+	ExpireAt          time.Time   `json:"expireAt"`
+	CreatedAt         time.Time   `json:"createdAt"`
 	CltvExpiry        int64       `json:"cltvExpiry"`
 	Private           bool        `json:"private"`
 	Features          FeatureMap  `json:"features"`
