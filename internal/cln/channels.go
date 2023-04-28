@@ -23,6 +23,9 @@ import (
 const streamChannelsTickerSeconds = 10
 
 type client_ListChannels interface {
+	ListPeerChannels(ctx context.Context,
+		in *cln.ListpeerchannelsRequest,
+		opts ...grpc.CallOption) (*cln.ListpeerchannelsResponse, error)
 	ListChannels(ctx context.Context,
 		in *cln.ListchannelsRequest,
 		opts ...grpc.CallOption) (*cln.ListchannelsResponse, error)
@@ -67,14 +70,15 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
-	currentChannels := cache.GetChannelSettingsByNodeId(nodeSettings.NodeId)
-	var openChannelIds []int
-	for _, currentChannel := range currentChannels {
-		if currentChannel.Status < core.CooperativeClosed {
-			openChannelIds = append(openChannelIds, currentChannel.ChannelId)
-		}
+	clnPeerChannels, err := client.ListPeerChannels(ctx, &cln.ListpeerchannelsRequest{})
+	if err != nil {
+		return errors.Wrapf(err, "listing peer channels for nodeId: %v", nodeSettings.NodeId)
 	}
-	processedChannelIds := make(map[int]bool, len(currentChannels))
+
+	err = storePeerChannels(db, clnPeerChannels.Channels, nodeSettings)
+	if err != nil {
+		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
+	}
 
 	publicKey, err := hex.DecodeString(nodeSettings.PublicKey)
 	if err != nil {
@@ -87,7 +91,7 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 		return errors.Wrapf(err, "listing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storeChannels(db, clnChannels.Channels, nodeSettings, processedChannelIds)
+	err = storeChannels(db, clnChannels.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
@@ -99,42 +103,9 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 		return errors.Wrapf(err, "listing destination channels for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storeChannels(db, clnChannels.Channels, nodeSettings, processedChannelIds)
+	err = storeChannels(db, clnChannels.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing destination channels for nodeId: %v", nodeSettings.NodeId)
-	}
-
-	for _, openChannelId := range openChannelIds {
-		if !processedChannelIds[openChannelId] {
-			log.Info().Msgf("Channel with channelId: %v got dropped from the list for nodeId: %v",
-				openChannelId, nodeSettings.NodeId)
-			channel, err := channels.GetChannel(db, openChannelId)
-			if err != nil {
-				return errors.Wrapf(err, "obtaining dropped channel with channelId: %v for nodeId: %v",
-					openChannelId, nodeSettings.NodeId)
-			}
-			channel.Status = core.CooperativeClosed
-			_, err = channels.AddChannelOrUpdateChannelStatus(db, nodeSettings, channel)
-			if err != nil {
-				return errors.Wrapf(err, "persisting dropped channel with channelId: %v for nodeId: %v",
-					openChannelId, nodeSettings.NodeId)
-			}
-
-			peerNodeId := channel.FirstNodeId
-			if peerNodeId == nodeSettings.NodeId {
-				peerNodeId = channel.SecondNodeId
-			}
-
-			// This stops the graph from listening to node updates
-			chans, err := channels.GetOpenChannelsForNodeId(db, nodeSettings.NodeId)
-			if err != nil {
-				log.Error().Err(err).Msgf("Failed to verify if remote node still has open channels: %v", peerNodeId)
-			}
-			if len(chans) == 0 {
-				peerPublicKey := cache.GetNodeSettingsByNodeId(peerNodeId).PublicKey
-				cache.SetInactiveChannelPeerNode(peerNodeId, peerPublicKey, nodeSettings.Chain, nodeSettings.Network)
-			}
-		}
 	}
 
 	if bootStrapping {
@@ -144,25 +115,14 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 	return nil
 }
 
-func storeChannels(db *sqlx.DB,
-	clnChannels []*cln.ListchannelsChannels,
-	nodeSettings cache.NodeSettingsCache,
-	processedChannelIds map[int]bool) error {
+func storePeerChannels(db *sqlx.DB,
+	clnPeerChannels []*cln.ListpeerchannelsChannels,
+	nodeSettings cache.NodeSettingsCache) error {
 
-	processedShortChannelIds := make(map[string]bool)
-	for _, clnChannel := range clnChannels {
-		if clnChannel != nil {
-			if processedShortChannelIds[clnChannel.ShortChannelId] {
-				continue
-			}
-			sourcePublicKey := hex.EncodeToString(clnChannel.Source)
-			destinationPublicKey := hex.EncodeToString(clnChannel.Destination)
-			peerNodeId := cache.GetPeerNodeIdByPublicKey(sourcePublicKey, nodeSettings.Chain, nodeSettings.Network)
-			peerPublicKey := sourcePublicKey
-			if peerNodeId == nodeSettings.NodeId {
-				peerNodeId = cache.GetPeerNodeIdByPublicKey(destinationPublicKey, nodeSettings.Chain, nodeSettings.Network)
-				peerPublicKey = destinationPublicKey
-			}
+	for _, clnPeerChannel := range clnPeerChannels {
+		if clnPeerChannel != nil {
+			peerPublicKey := hex.EncodeToString(clnPeerChannel.PeerId)
+			peerNodeId := cache.GetPeerNodeIdByPublicKey(peerPublicKey, nodeSettings.Chain, nodeSettings.Network)
 			if peerNodeId == 0 {
 				var err error
 				peerNodeId, err = nodes.AddNodeWhenNew(db, nodes.Node{
@@ -174,12 +134,36 @@ func storeChannels(db *sqlx.DB,
 					return errors.Wrapf(err, "add new peer node for nodeId: %v", nodeSettings.NodeId)
 				}
 			}
-			channelId, err := processChannel(db, clnChannel, nodeSettings, peerNodeId, peerPublicKey)
+			_, err := processPeerChannel(db, clnPeerChannel, nodeSettings, peerNodeId, peerPublicKey)
 			if err != nil {
 				return errors.Wrapf(err, "process channel for nodeId: %v", nodeSettings.NodeId)
 			}
-			processedShortChannelIds[clnChannel.ShortChannelId] = true
-			processedChannelIds[channelId] = true
+		}
+	}
+	return nil
+}
+
+func storeChannels(db *sqlx.DB,
+	clnChannels []*cln.ListchannelsChannels,
+	nodeSettings cache.NodeSettingsCache) error {
+
+	for _, clnChannel := range clnChannels {
+		if clnChannel != nil {
+			sourcePublicKey := hex.EncodeToString(clnChannel.Source)
+			destinationPublicKey := hex.EncodeToString(clnChannel.Destination)
+			peerNodeId := cache.GetPeerNodeIdByPublicKey(sourcePublicKey, nodeSettings.Chain, nodeSettings.Network)
+			if peerNodeId == nodeSettings.NodeId {
+				peerNodeId = cache.GetPeerNodeIdByPublicKey(destinationPublicKey, nodeSettings.Chain, nodeSettings.Network)
+			}
+			if peerNodeId == 0 {
+				log.Info().Msgf("Skipping channel: Peer node is unknown for nodeId: %v", nodeSettings.NodeId)
+				continue
+			}
+			channelId := cache.GetChannelIdByShortChannelId(&clnChannel.ShortChannelId)
+			if channelId == 0 {
+				log.Info().Msgf("Skipping channel: Channel is unknown for nodeId: %v", nodeSettings.NodeId)
+				continue
+			}
 
 			announcingNodeId := cache.GetPeerNodeIdByPublicKey(
 				sourcePublicKey, nodeSettings.Chain, nodeSettings.Network)
@@ -204,7 +188,7 @@ func storeChannels(db *sqlx.DB,
 				channelEvent.MaxHtlcMsat = (*maxHtlcMsat).Msat
 			}
 			channelEvent.TimeLockDelta = clnChannel.Delay
-			err = insertRoutingPolicy(db, channelEvent, nodeSettings)
+			err := insertRoutingPolicy(db, channelEvent, nodeSettings)
 			if err != nil {
 				return errors.Wrapf(err, "process routing policy for nodeId: %v", nodeSettings.NodeId)
 			}
@@ -213,54 +197,186 @@ func storeChannels(db *sqlx.DB,
 	return nil
 }
 
-func processChannel(db *sqlx.DB,
-	clnChannel *cln.ListchannelsChannels,
+func processPeerChannel(db *sqlx.DB,
+	clnPeerChannel *cln.ListpeerchannelsChannels,
 	nodeSettings cache.NodeSettingsCache,
 	peerNodeId int,
 	peerPublicKey string) (int, error) {
 
-	channelId := cache.GetChannelIdByShortChannelId(&clnChannel.ShortChannelId)
+	var fundingOutputIndex *int
+	if clnPeerChannel.FundingOutnum != nil {
+		foi := int(*clnPeerChannel.FundingOutnum)
+		fundingOutputIndex = &foi
+	}
+	var fundingTransactionHash *string
+	if len(clnPeerChannel.FundingTxid) != 0 {
+		fti := hex.EncodeToString(clnPeerChannel.FundingTxid)
+		fundingTransactionHash = &fti
+	}
+	var channelId int
+	if clnPeerChannel.ShortChannelId != nil {
+		channelId = cache.GetChannelIdByShortChannelId(clnPeerChannel.ShortChannelId)
+	}
+	if channelId == 0 && len(clnPeerChannel.FundingTxid) != 0 {
+		channelId = cache.GetChannelIdByFundingTransaction(fundingTransactionHash, fundingOutputIndex)
+	}
 	var channel channels.Channel
 	if channelId == 0 {
-		// TODO FIXME CLN: ONCE the CLN gRPC is fixed then remove this code
-		// Initial channel import should not be from the ListChannels gRPC!!!
 		channel = channels.Channel{
-			ShortChannelID: &clnChannel.ShortChannelId,
-			FirstNodeId:    nodeSettings.NodeId,
-			SecondNodeId:   peerNodeId,
-			Status:         core.Open,
+			FundingTransactionHash: fundingTransactionHash,
+			FundingOutputIndex:     fundingOutputIndex,
+			FirstNodeId:            nodeSettings.NodeId,
+			SecondNodeId:           peerNodeId,
 		}
 	} else {
 		channelSettings := cache.GetChannelSettingByChannelId(channelId)
 		channel = channels.Channel{
-			ChannelID:              channelSettings.ChannelId,
-			ShortChannelID:         channelSettings.ShortChannelId,
-			ClosingTransactionHash: channelSettings.ClosingTransactionHash,
-			Capacity:               channelSettings.Capacity,
-			Private:                channelSettings.Private,
+			FundingTransactionHash: fundingTransactionHash,
+			FundingOutputIndex:     fundingOutputIndex,
 			FirstNodeId:            channelSettings.FirstNodeId,
 			SecondNodeId:           channelSettings.SecondNodeId,
-			InitiatingNodeId:       channelSettings.InitiatingNodeId,
-			AcceptingNodeId:        channelSettings.AcceptingNodeId,
-			ClosingNodeId:          channelSettings.ClosingNodeId,
-			Status:                 channelSettings.Status,
+
+			ChannelID:              channelSettings.ChannelId,
+			ShortChannelID:         channelSettings.ShortChannelId,
 			FundingBlockHeight:     channelSettings.FundingBlockHeight,
 			FundedOn:               channelSettings.FundedOn,
+			Capacity:               channelSettings.Capacity,
+			InitiatingNodeId:       channelSettings.InitiatingNodeId,
+			AcceptingNodeId:        channelSettings.AcceptingNodeId,
+			Private:                channelSettings.Private,
+			Status:                 channelSettings.Status,
+			ClosingTransactionHash: channelSettings.ClosingTransactionHash,
+			ClosingNodeId:          channelSettings.ClosingNodeId,
 			ClosingBlockHeight:     channelSettings.ClosingBlockHeight,
 			ClosedOn:               channelSettings.ClosedOn,
 			Flags:                  channelSettings.Flags,
 		}
 	}
-	if clnChannel.AmountMsat != nil {
-		channel.Capacity = int64(clnChannel.AmountMsat.Msat / 1_000)
+	if clnPeerChannel.ShortChannelId != nil &&
+		(channel.ShortChannelID == nil || *channel.ShortChannelID != clnPeerChannel.GetShortChannelId()) {
+
+		shortChannelId := *clnPeerChannel.ShortChannelId
+		channel.ShortChannelID = &shortChannelId
 	}
-	channel.Private = !clnChannel.Public
-	channelId, err := channels.AddChannelOrUpdateChannelStatus(db, nodeSettings, channel)
+	if clnPeerChannel.TotalMsat != nil {
+		channel.Capacity = int64(clnPeerChannel.TotalMsat.Msat / 1_000)
+	}
+	if clnPeerChannel.Private != nil {
+		channel.Private = *clnPeerChannel.Private
+	}
+	if clnPeerChannel.Closer != nil {
+		switch *clnPeerChannel.Closer {
+		case cln.ChannelSide_IN:
+			channel.ClosingNodeId = &peerNodeId
+		case cln.ChannelSide_OUT:
+			channel.ClosingNodeId = &nodeSettings.NodeId
+		}
+	}
+	if clnPeerChannel.Opener != nil {
+		switch *clnPeerChannel.Opener {
+		case cln.ChannelSide_IN:
+			channel.InitiatingNodeId = &peerNodeId
+			channel.AcceptingNodeId = &nodeSettings.NodeId
+		case cln.ChannelSide_OUT:
+			channel.InitiatingNodeId = &nodeSettings.NodeId
+			channel.AcceptingNodeId = &peerNodeId
+		}
+	}
+	if clnPeerChannel.CloseTo != nil &&
+		(channel.ClosingTransactionHash == nil || *channel.ClosingTransactionHash != hex.EncodeToString(clnPeerChannel.CloseTo)) {
+
+		closeTo := hex.EncodeToString(clnPeerChannel.CloseTo)
+		channel.ClosingTransactionHash = &closeTo
+	}
+	channelStatus := core.Opening
+	if clnPeerChannel.State != nil {
+		switch *clnPeerChannel.State {
+		case cln.ListpeerchannelsChannels_OPENINGD,
+			cln.ListpeerchannelsChannels_DUALOPEND_OPEN_INIT,
+			cln.ListpeerchannelsChannels_CHANNELD_AWAITING_LOCKIN,
+			cln.ListpeerchannelsChannels_DUALOPEND_AWAITING_LOCKIN:
+			channelStatus = core.Opening
+		case cln.ListpeerchannelsChannels_CHANNELD_NORMAL:
+			channelStatus = core.Open
+		case cln.ListpeerchannelsChannels_CHANNELD_SHUTTING_DOWN,
+			cln.ListpeerchannelsChannels_CLOSINGD_SIGEXCHANGE,
+			cln.ListpeerchannelsChannels_CLOSINGD_COMPLETE:
+			channelStatus = core.CooperativeClosed
+		case cln.ListpeerchannelsChannels_AWAITING_UNILATERAL:
+			channelStatus = core.LocalForceClosed
+		case cln.ListpeerchannelsChannels_FUNDING_SPEND_SEEN,
+			cln.ListpeerchannelsChannels_ONCHAIN:
+			// TODO FIXME How identify BreachClosed?
+			channelStatus = core.RemoteForceClosed
+		}
+	}
+	channel.Status = channelStatus
+
+	// TODO FIXME CLN returns a lot more data then LND. We should probably expand our channel table!
+
+	_, err := channels.AddChannelOrUpdateChannelStatus(db, nodeSettings, channel)
 	if err != nil {
 		return 0, errors.Wrapf(err, "update channel data for channelId: %v, nodeId: %v",
 			channelId, nodeSettings.NodeId)
 	}
-	cache.SetChannelPeerNode(peerNodeId, peerPublicKey, nodeSettings.Chain, nodeSettings.Network, core.Open)
+	cache.SetChannelPeerNode(peerNodeId, peerPublicKey, nodeSettings.Chain, nodeSettings.Network, channelStatus)
+	channelState := cache.GetChannelState(nodeSettings.NodeId, channelId, true)
+	if channelState == nil {
+		log.Info().Msgf("Peer channel received with unknown channel state for channelId: %v, nodeId: %v",
+			channelId, nodeSettings.NodeId)
+		return channelId, nil
+	}
+	if clnPeerChannel.ChannelType != nil {
+		for _, ctn := range (*clnPeerChannel.ChannelType).Names {
+			if channelState.CommitmentType == core.CommitmentTypeUnknown {
+				channelState.CommitmentType = core.GetCommitmentTypeForCln(ctn)
+			}
+		}
+	}
+	var htlcs []cache.Htlc
+	pendingIncomingHtlcCount := 0
+	pendingIncomingHtlcAmount := int64(0)
+	pendingOutgoingHtlcCount := 0
+	pendingOutgoingHtlcAmount := int64(0)
+	for _, htlc := range clnPeerChannel.Htlcs {
+		if htlc == nil {
+			continue
+		}
+		if htlc.Direction == nil || htlc.AmountMsat == nil || htlc.Expiry == nil || htlc.Id == nil {
+			continue
+		}
+		amount := int64((*htlc.AmountMsat).Msat / 1_000)
+		switch *htlc.Direction {
+		case cln.ListpeerchannelsChannelsHtlcs_IN:
+			htlcs = append(htlcs, cache.Htlc{
+				Incoming:         true,
+				Amount:           amount,
+				HashLock:         htlc.PaymentHash,
+				ExpirationHeight: *htlc.Expiry,
+				HtlcIndex:        *htlc.Id,
+			})
+			pendingIncomingHtlcCount++
+			pendingIncomingHtlcAmount += amount
+		case cln.ListpeerchannelsChannelsHtlcs_OUT:
+			htlcs = append(htlcs, cache.Htlc{
+				Incoming:            false,
+				Amount:              amount,
+				HashLock:            htlc.PaymentHash,
+				ExpirationHeight:    *htlc.Expiry,
+				ForwardingHtlcIndex: *htlc.Id,
+			})
+			pendingOutgoingHtlcCount++
+			pendingOutgoingHtlcAmount += amount
+		}
+	}
+	channelState.PendingHtlcs = htlcs
+	channelState.PendingIncomingHtlcCount = pendingIncomingHtlcCount
+	channelState.PendingIncomingHtlcAmount = pendingIncomingHtlcAmount
+	channelState.PendingOutgoingHtlcCount = pendingOutgoingHtlcCount
+	channelState.PendingOutgoingHtlcAmount = pendingOutgoingHtlcAmount
+
+	cache.SetChannelState(nodeSettings.NodeId, *channelState)
+	cache.SetChannelPeerNode(peerNodeId, peerPublicKey, nodeSettings.Chain, nodeSettings.Network, channel.Status)
 	return channelId, nil
 }
 
@@ -304,6 +420,29 @@ func insertRoutingPolicy(
 		if err != nil {
 			return errors.Wrapf(err, "insertRoutingPolicy")
 		}
+
+		channelState := cache.GetChannelState(nodeSettings.NodeId, channelEvent.ChannelId, true)
+		if channelState == nil {
+			log.Info().Msgf("Peer channel received with unknown channel state for channelId: %v, nodeId: %v",
+				channelEvent.ChannelId, nodeSettings.NodeId)
+			return nil
+		}
+		if channelEvent.AnnouncingNodeId == nodeSettings.NodeId {
+			channelState.LocalDisabled = channelEvent.Disabled
+			channelState.LocalTimeLockDelta = channelEvent.TimeLockDelta
+			channelState.LocalFeeBaseMsat = channelEvent.FeeBaseMsat
+			channelState.LocalFeeRateMilliMsat = channelEvent.FeeRateMilliMsat
+			channelState.LocalMinHtlcMsat = channelEvent.MinHtlcMsat
+			channelState.LocalMaxHtlcMsat = channelEvent.MaxHtlcMsat
+		} else {
+			channelState.RemoteDisabled = channelEvent.Disabled
+			channelState.RemoteTimeLockDelta = channelEvent.TimeLockDelta
+			channelState.RemoteFeeBaseMsat = channelEvent.FeeBaseMsat
+			channelState.RemoteFeeRateMilliMsat = channelEvent.FeeRateMilliMsat
+			channelState.RemoteMinHtlcMsat = channelEvent.MinHtlcMsat
+			channelState.RemoteMaxHtlcMsat = channelEvent.MaxHtlcMsat
+		}
+		cache.SetChannelState(nodeSettings.NodeId, *channelState)
 	}
 	return nil
 }

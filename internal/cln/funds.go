@@ -115,13 +115,26 @@ func storeChannelFunds(db *sqlx.DB,
 			log.Info().Msgf("skipping funds import from peer public key: %v", hex.EncodeToString(clnChannel.PeerId))
 			continue
 		}
+
+		localBalance := int64(clnChannel.OurAmountMsat.Msat / 1000)
+		remoteBalance := int64(clnChannel.AmountMsat.Msat/1000 - clnChannel.OurAmountMsat.Msat/1000)
+
+		existingChannelStateSettings := cache.GetChannelState(nodeSettings.NodeId, channelId, true)
+		if existingChannelStateSettings != nil {
+			existingChannelStateSettings.LocalBalance = localBalance
+			existingChannelStateSettings.RemoteBalance = remoteBalance
+			channelStateSettingsList = append(channelStateSettingsList, *existingChannelStateSettings)
+			continue
+		}
+
 		channelStateSettings := cache.ChannelStateSettingsCache{
 			NodeId:        nodeSettings.NodeId,
 			RemoteNodeId:  remoteNodeId,
 			ChannelId:     channelId,
-			LocalBalance:  int64(clnChannel.OurAmountMsat.Msat / 1000),
-			RemoteBalance: int64(clnChannel.AmountMsat.Msat/1000 - clnChannel.OurAmountMsat.Msat/1000),
+			LocalBalance:  localBalance,
+			RemoteBalance: remoteBalance,
 		}
+
 		localRoutingPolicy, err := channels.GetLocalRoutingPolicy(db, channelId, nodeSettings.NodeId)
 		if err != nil {
 			return errors.Wrapf(err, "obtaining LocalRoutingPolicy from the database for channelId: %v", channelId)
@@ -143,7 +156,6 @@ func storeChannelFunds(db *sqlx.DB,
 		channelStateSettings.RemoteMinHtlcMsat = remoteRoutingPolicy.MinHtlcMsat
 		channelStateSettings.RemoteMaxHtlcMsat = remoteRoutingPolicy.MaxHtlcMsat
 		channelStateSettings.RemoteTimeLockDelta = remoteRoutingPolicy.TimeLockDelta
-
 		channelStateSettingsList = append(channelStateSettingsList, channelStateSettings)
 	}
 	cache.SetChannelStates(nodeSettings.NodeId, channelStateSettingsList)

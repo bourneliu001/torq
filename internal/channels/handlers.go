@@ -12,8 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/lncapital/torq/proto/lnrpc"
-
 	"github.com/lncapital/torq/internal/cache"
 	"github.com/lncapital/torq/internal/core"
 	"github.com/lncapital/torq/internal/tags"
@@ -79,7 +77,7 @@ type ChannelBody struct {
 	ChanStatusFlags              string               `json:"chanStatusFlags"`
 	LocalChanReserveSat          int64                `json:"localChanReserveSat"`
 	RemoteChanReserveSat         int64                `json:"remoteChanReserveSat"`
-	CommitmentType               lnrpc.CommitmentType `json:"commitmentType"`
+	CommitmentType               core.CommitmentType  `json:"commitmentType"`
 	Lifetime                     int64                `json:"lifetime"`
 	TotalSatoshisReceived        int64                `json:"totalSatoshisReceived"`
 	MempoolSpace                 string               `json:"mempoolSpace"`

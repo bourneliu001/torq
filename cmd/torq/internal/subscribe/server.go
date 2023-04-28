@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func StartChannelEventStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndChannelEventStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceChannelEventStream
 
@@ -59,7 +59,7 @@ func StartChannelEventStream(ctx context.Context, conn *grpc.ClientConn, db *sql
 	lnd.SubscribeAndStoreChannelEvents(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartGraphEventStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndGraphEventStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceGraphEventStream
 
@@ -99,7 +99,7 @@ func StartGraphEventStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.
 	lnd.SubscribeAndStoreChannelGraph(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartHtlcEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndHtlcEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceHtlcEventStream
 
@@ -118,7 +118,7 @@ func StartHtlcEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, no
 	lnd.SubscribeAndStoreHtlcEvents(ctx, routerrpc.NewRouterClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartPeerEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndPeerEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServicePeerEventStream
 
@@ -144,7 +144,7 @@ func StartPeerEvents(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, no
 	lnd.SubscribePeerEvents(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartTransactionStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndTransactionStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceTransactionStream
 
@@ -167,7 +167,7 @@ func StartTransactionStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx
 		cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartForwardsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndForwardsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceForwardsService
 
@@ -186,7 +186,7 @@ func StartForwardsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.D
 	lnd.SubscribeForwardingEvents(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId), nil)
 }
 
-func StartPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServicePaymentsService
 
@@ -205,7 +205,7 @@ func StartPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.D
 	lnd.SubscribeAndStorePayments(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId), nil)
 }
 
-func StartInvoiceStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndInvoiceStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceInvoiceStream
 
@@ -224,7 +224,7 @@ func StartInvoiceStream(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB,
 	lnd.SubscribeAndStoreInvoices(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartInFlightPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartLndInFlightPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.LndServiceInFlightPaymentsService
 
@@ -243,83 +243,7 @@ func StartInFlightPaymentsService(ctx context.Context, conn *grpc.ClientConn, db
 	lnd.UpdateInFlightPayments(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId), nil)
 }
 
-func StartPeersService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
-
-	serviceType := services_helpers.ClnServicePeersService
-
-	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
-
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
-			cache.SetFailedNodeServiceState(serviceType, nodeId)
-			return
-		}
-	}()
-
-	cache.SetPendingNodeServiceState(serviceType, nodeId)
-
-	cln2.SubscribeAndStorePeers(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
-}
-
-func StartChannelsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
-
-	serviceType := services_helpers.ClnServiceChannelsService
-
-	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
-
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
-			cache.SetFailedNodeServiceState(serviceType, nodeId)
-			return
-		}
-	}()
-
-	cache.SetPendingNodeServiceState(serviceType, nodeId)
-
-	cln2.SubscribeAndStoreChannels(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
-}
-
-func StartFundsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
-
-	serviceType := services_helpers.ClnServiceFundsService
-
-	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
-
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
-			cache.SetFailedNodeServiceState(serviceType, nodeId)
-			return
-		}
-	}()
-
-	cache.SetPendingNodeServiceState(serviceType, nodeId)
-
-	cln2.SubscribeAndStoreFunds(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
-}
-
-func StartNodesService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
-
-	serviceType := services_helpers.ClnServiceNodesService
-
-	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
-
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
-			cache.SetFailedNodeServiceState(serviceType, nodeId)
-			return
-		}
-	}()
-
-	cache.SetPendingNodeServiceState(serviceType, nodeId)
-
-	cln2.SubscribeAndStoreNodes(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
-}
-
-func StartChannelBalanceCacheMaintenance(ctx context.Context,
+func StartLndChannelBalanceCacheMaintenance(ctx context.Context,
 	conn *grpc.ClientConn,
 	db *sqlx.DB,
 	nodeId int) {
@@ -341,7 +265,102 @@ func StartChannelBalanceCacheMaintenance(ctx context.Context,
 	lnd.ChannelBalanceCacheMaintenance(ctx, lnrpc.NewLightningClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
 
-func StartTransactionsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+func StartClnPeersService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServicePeersService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStorePeers(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnChannelsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceChannelsService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreChannels(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnClosedChannelsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceClosedChannelsService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreClosedChannels(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnFundsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceFundsService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreFunds(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnNodesService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceNodesService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreNodes(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnTransactionsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
 
 	serviceType := services_helpers.ClnServiceTransactionsService
 
@@ -358,4 +377,23 @@ func StartTransactionsService(ctx context.Context, conn *grpc.ClientConn, db *sq
 	cache.SetPendingNodeServiceState(serviceType, nodeId)
 
 	cln2.SubscribeAndStoreTransactions(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnForwardsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceForwardsService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreForwards(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }

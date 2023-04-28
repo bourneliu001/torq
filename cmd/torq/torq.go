@@ -813,40 +813,44 @@ func bootService(db *sqlx.DB, serviceType services_helpers.ServiceType, nodeId i
 	case services_helpers.LndServiceRebalanceService:
 		go services.StartRebalanceService(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceChannelEventStream:
-		go subscribe.StartChannelEventStream(ctx, conn, db, nodeId)
+		go subscribe.StartLndChannelEventStream(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceGraphEventStream:
-		go subscribe.StartGraphEventStream(ctx, conn, db, nodeId)
+		go subscribe.StartLndGraphEventStream(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceTransactionStream:
-		go subscribe.StartTransactionStream(ctx, conn, db, nodeId)
+		go subscribe.StartLndTransactionStream(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceHtlcEventStream:
-		go subscribe.StartHtlcEvents(ctx, conn, db, nodeId)
+		go subscribe.StartLndHtlcEvents(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceForwardsService:
-		go subscribe.StartForwardsService(ctx, conn, db, nodeId)
+		go subscribe.StartLndForwardsService(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceInvoiceStream:
-		go subscribe.StartInvoiceStream(ctx, conn, db, nodeId)
+		go subscribe.StartLndInvoiceStream(ctx, conn, db, nodeId)
 	case services_helpers.LndServicePaymentsService:
-		go subscribe.StartPaymentsService(ctx, conn, db, nodeId)
+		go subscribe.StartLndPaymentsService(ctx, conn, db, nodeId)
 	case services_helpers.LndServicePeerEventStream:
-		go subscribe.StartPeerEvents(ctx, conn, db, nodeId)
+		go subscribe.StartLndPeerEvents(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceInFlightPaymentsService:
-		go subscribe.StartInFlightPaymentsService(ctx, conn, db, nodeId)
+		go subscribe.StartLndInFlightPaymentsService(ctx, conn, db, nodeId)
 	case services_helpers.LndServiceChannelBalanceCacheService:
-		go subscribe.StartChannelBalanceCacheMaintenance(ctx, conn, db, nodeId)
+		go subscribe.StartLndChannelBalanceCacheMaintenance(ctx, conn, db, nodeId)
 	// CLN NODE SPECIFIC
 	case services_helpers.ClnServiceVectorService:
 		go vector_ping.Start(ctx, conn, core.CLN, nodeId)
 	case services_helpers.ClnServiceAmbossService:
 		go amboss_ping.Start(ctx, conn, core.CLN, nodeId)
 	case services_helpers.ClnServicePeersService:
-		go subscribe.StartPeersService(ctx, conn, db, nodeId)
+		go subscribe.StartClnPeersService(ctx, conn, db, nodeId)
 	case services_helpers.ClnServiceChannelsService:
-		go subscribe.StartChannelsService(ctx, conn, db, nodeId)
+		go subscribe.StartClnChannelsService(ctx, conn, db, nodeId)
+	case services_helpers.ClnServiceClosedChannelsService:
+		go subscribe.StartClnClosedChannelsService(ctx, conn, db, nodeId)
 	case services_helpers.ClnServiceFundsService:
-		go subscribe.StartFundsService(ctx, conn, db, nodeId)
+		go subscribe.StartClnFundsService(ctx, conn, db, nodeId)
 	case services_helpers.ClnServiceNodesService:
-		go subscribe.StartNodesService(ctx, conn, db, nodeId)
+		go subscribe.StartClnNodesService(ctx, conn, db, nodeId)
 	case services_helpers.ClnServiceTransactionsService:
-		go subscribe.StartTransactionsService(ctx, conn, db, nodeId)
+		go subscribe.StartClnTransactionsService(ctx, conn, db, nodeId)
+	case services_helpers.ClnServiceForwardsService:
+		go subscribe.StartClnForwardsService(ctx, conn, db, nodeId)
 	}
 }
 
@@ -877,9 +881,11 @@ func isBootable(serviceType services_helpers.ServiceType, nodeId int) bool {
 	case services_helpers.ClnServiceVectorService, services_helpers.ClnServiceAmbossService,
 		services_helpers.ClnServicePeersService,
 		services_helpers.ClnServiceChannelsService,
+		services_helpers.ClnServiceClosedChannelsService,
 		services_helpers.ClnServiceFundsService,
 		services_helpers.ClnServiceNodesService,
-		services_helpers.ClnServiceTransactionsService:
+		services_helpers.ClnServiceTransactionsService,
+		services_helpers.ClnServiceForwardsService:
 		nodeConnectionDetails := cache.GetNodeConnectionDetails(nodeId)
 		if nodeConnectionDetails.Implementation == core.CLN &&
 			(nodeConnectionDetails.GRPCAddress == "" ||

@@ -88,6 +88,34 @@ func (s ChannelStatus) String() string {
 	return UnknownEnumString
 }
 
+func GetCommitmentTypeForLnd(commitmentType int) CommitmentType {
+	switch commitmentType {
+	case 1:
+		return CommitmentTypeLegacy
+	case 2:
+		return CommitmentTypeStaticRemoteKey
+	case 3:
+		return CommitmentTypeAnchors
+	case 4:
+		return CommitmentTypeScriptEnforcedLease
+	}
+	return CommitmentTypeUnknown
+}
+
+func GetCommitmentTypeForCln(commitmentType string) CommitmentType {
+	switch commitmentType {
+	case "static_remotekey/even":
+		return CommitmentTypeStaticRemoteKey
+	case "anchor_outputs/even",
+		"anchors_zero_fee_htlc_tx/even":
+		return CommitmentTypeAnchors
+	}
+	// TODO FIXME CLN Verify these (and above) commitment types
+	//"scid_alias/even"
+	//"zeroconf/even"
+	return CommitmentTypeUnknown
+}
+
 // NodeConnectionStatus is the status of a node connection.
 func (s NodeConnectionSetting) String() string {
 	switch s {
