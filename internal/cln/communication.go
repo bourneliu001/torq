@@ -1413,7 +1413,8 @@ func processDecodeInvoiceRequest(ctx context.Context,
 		return response
 	}
 
-	decodedInvoice, err := cln.NewNodeClient(connection).Decode(ctx, &cln.DecodeRequest{String_: &request.Invoice})
+	client := cln.NewNodeClient(connection)
+	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &request.Invoice})
 	// TODO: Handle different error types like incorrect checksum etc to explain why the decode failed.
 	if err != nil {
 		response.Error = err.Error()
@@ -1421,9 +1422,23 @@ func processDecodeInvoiceRequest(ctx context.Context,
 	}
 
 	response = constructDecodedInvoice(decodedInvoice, response)
-	//if response.NodeAlias == "" {
-	// TODO FIXME CLN get node alias from the CLN API?
-	//}
+	if response.NodeAlias == "" {
+		pk, err := hex.DecodeString(response.DestinationPubKey)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to decode for public key: %v", response.DestinationPubKey)
+			return response
+		}
+		clnNode, err := client.ListNodes(ctx, &cln.ListnodesRequest{
+			Id: pk,
+		})
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to obtain node alias for public key: %v", response.DestinationPubKey)
+			return response
+		}
+		if clnNode != nil && len(clnNode.Nodes) != 0 && clnNode.Nodes[0] != nil && clnNode.Nodes[0].Alias != nil {
+			response.NodeAlias = *clnNode.Nodes[0].Alias
+		}
+	}
 	return response
 }
 
