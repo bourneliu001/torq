@@ -37,6 +37,7 @@ import FowardsSummaryPage from "features/channel/ForwardsSummary";
 import PeersPage from "features/peers/PeersPage";
 import PeerConnectModal from "features/peers/peerConnectModal";
 import PeerUpdateModal from "features/peers/peerUpdateModal";
+import MoveFundsModal from "pages/moveFunds/moveFundsModal";
 function Logout() {
   const [logout] = useLogoutMutation();
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ const modalRoutes: RouteObject = {
     { path: routes.MESSAGE_VERIFICATION, element: <MessageVerificationModal /> },
     { path: routes.CONNECT_PEER, element: <PeerConnectModal /> },
     { path: routes.UPDATE_PEER, element: <PeerUpdateModal /> },
+    { path: routes.MOVE_FUNDS, element: <MoveFundsModal /> },
   ],
 };
 

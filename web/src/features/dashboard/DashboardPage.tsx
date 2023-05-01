@@ -5,7 +5,7 @@ import { TableControlsButtonGroup, TableControlSection } from "../templates/tabl
 import Button, { ButtonPosition, ColorVariant, SizeVariant } from "components/buttons/Button";
 import { useNavigate } from "react-router-dom";
 import * as Routes from "constants/routes";
-import { NEW_ADDRESS, NEW_INVOICE, NEW_PAYMENT } from "constants/routes";
+import { MOVE_FUNDS, NEW_ADDRESS, NEW_INVOICE, NEW_PAYMENT } from "constants/routes";
 import { useLocation } from "react-router";
 import {
   ArrowRouting20Regular as ChannelsIcon,
@@ -14,6 +14,7 @@ import {
   Copy16Regular as CopyIcon,
   Dismiss20Regular as DismissIcon,
   LinkEdit20Regular as NewOnChainAddressIcon,
+  ArrowSwap20Regular as MoveFundsIcon,
   MoneyHand20Regular as TransactionIcon,
   Question20Regular as QuestionIcon,
 } from "@fluentui/react-icons";
@@ -191,7 +192,7 @@ function DashboardPage() {
     const walletBalances =
       nodesWalletBalances?.find((x) => x.request.nodeId === node.nodeId) ??
       ({
-        request: {nodeId: 0} as lightningRequest,
+        request: { nodeId: 0 } as lightningRequest,
         totalBalance: 0,
         confirmedBalance: 0,
         unconfirmedBalance: 0,
@@ -279,6 +280,19 @@ function DashboardPage() {
           }}
         >
           {t.newAddress}
+        </Button>
+
+        <Button
+          buttonColor={ColorVariant.success}
+          intercomTarget="move-funds-button-dashboard"
+          icon={<MoveFundsIcon />}
+          hideMobileText={true}
+          onClick={() => {
+            navigate(MOVE_FUNDS, { state: { background: location } });
+            track("Navigate to Move Funds");
+          }}
+        >
+          {t.moveFunds}
         </Button>
       </TableControlsButtonGroup>
     </TableControlSection>

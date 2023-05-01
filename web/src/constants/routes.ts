@@ -44,3 +44,5 @@ export const UPDATE_PEER = "/edit-peer";
 // Automation
 export const WORKFLOWS = "workflows";
 export const WORKFLOW = "workflows/:workflowId/versions/:version";
+
+export const MOVE_FUNDS = "move-funds";

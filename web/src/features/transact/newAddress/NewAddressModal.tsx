@@ -7,7 +7,7 @@ import { useNavigate } from "react-router";
 import styles from "features/transact/newAddress/newAddress.module.scss";
 import useTranslations from "services/i18n/useTranslations";
 import { nodeConfiguration } from "apiTypes";
-import Select from "features/forms/Select";
+import Select, { SelectOptions } from "features/forms/Select";
 import { useNewAddressMutation } from "./newAddressApi";
 import { AddressType } from "./newAddressTypes";
 import Note, { NoteType } from "features/note/Note";
@@ -22,6 +22,7 @@ function NewAddressModal() {
   const { t } = useTranslations();
   const { track } = userEvents();
   const toastRef = useContext(ToastContext);
+  const [nodeConfigurationOptions, setNodeConfigurationOptions] = useState<Array<SelectOptions>>();
 
   const { data: nodeConfigurations } = useGetNodeConfigurationsQuery();
 
@@ -30,12 +31,15 @@ function NewAddressModal() {
     value: number;
   }
 
-  let nodeConfigurationOptions: Array<Option> = [{ value: 0, label: "Select a local node" }];
-  if (nodeConfigurations) {
-    nodeConfigurationOptions = nodeConfigurations.map((nodeConfiguration: nodeConfiguration) => {
-      return { value: nodeConfiguration.nodeId, label: nodeConfiguration.name ?? "" };
-    });
-  }
+  useEffect(() => {
+    if (nodeConfigurations) {
+      const options = nodeConfigurations.map((node: nodeConfiguration) => {
+        return { label: node.name, value: node.nodeId };
+      });
+      setNodeConfigurationOptions(options);
+      setSelectedNodeId(options[0].value);
+    }
+  }, [nodeConfigurations]);
 
   const addressTypeOptions = [
     { label: t.p2wpkh, value: AddressType.P2WPKH }, // Wrapped Segwit
@@ -44,14 +48,6 @@ function NewAddressModal() {
   ];
 
   const [selectedNodeId, setSelectedNodeId] = useState<number | undefined>();
-
-  useEffect(() => {
-    if (nodeConfigurations) {
-      if (nodeConfigurations.length == 1) {
-        setSelectedNodeId(nodeConfigurationOptions[0].value);
-      }
-    }
-  }, [nodeConfigurations]);
 
   const [newAddress, { error, data, isLoading, isSuccess, isError, isUninitialized }] = useNewAddressMutation();
 
@@ -86,7 +82,7 @@ function NewAddressModal() {
               }
             }}
             options={nodeConfigurationOptions}
-            value={nodeConfigurationOptions.find((option) => option.value === selectedNodeId)}
+            value={nodeConfigurationOptions?.find((option) => option.value === selectedNodeId)}
           />
         </div>
       </div>
@@ -95,6 +91,7 @@ function NewAddressModal() {
           {addressTypeOptions.map((addType, index) => {
             return (
               <Button
+                buttonPosition={ButtonPosition.fullWidth}
                 intercomTarget={"new-address-" + addType.label}
                 disabled={isLoading || selectedNodeId === undefined}
                 buttonColor={ColorVariant.primary}
