@@ -3,6 +3,7 @@ package lnd
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/lncapital/torq/internal/lightning_helpers"
 	"github.com/lncapital/torq/proto/lnrpc"
@@ -65,7 +66,7 @@ func Test_constructDecodedInvoice(t *testing.T) {
 				RHash:             "payment_hash",
 				Memo:              "Some description encoded in the invoice",
 				ValueMsat:         100000,
-				CreatedAt:         1662812778,
+				CreatedAt:         time.Unix(1662812778, 0),
 				PaymentAddr:       "a8d5d694e768fe7b3df2612dc5c19be6f078500e9af5765657fd0f87ec64e7b0",
 				FallbackAddr:      "something",
 				Expiry:            120,
@@ -80,20 +81,20 @@ func Test_constructDecodedInvoice(t *testing.T) {
 				},
 				RouteHints: []lightning_helpers.RouteHint{{HopHints: []lightning_helpers.HopHint{
 					{
-						LNDShortChannelId: 72623859790382856,
-						NodeId:            "routing_hint_node_id_1",
-						ShortChannelId:    "66051x263430x1800",
-						FeeBase:           12,
-						CltvExpiryDelta:   3,
-						FeeProportional:   12000,
+						LNDShortChannelId:      72623859790382856,
+						ChannelSourcePublicKey: "routing_hint_node_id_1",
+						ShortChannelId:         "66051x263430x1800",
+						FeeBaseMsat:            12,
+						CltvExpiryDelta:        3,
+						FeeProportional:        12000,
 					},
 					{
-						LNDShortChannelId: 72623859790382857,
-						NodeId:            "routing_hint_node_id_2",
-						ShortChannelId:    "66051x263430x1801",
-						FeeBase:           12,
-						CltvExpiryDelta:   3,
-						FeeProportional:   12000,
+						LNDShortChannelId:      72623859790382857,
+						ChannelSourcePublicKey: "routing_hint_node_id_2",
+						ShortChannelId:         "66051x263430x1801",
+						FeeBaseMsat:            12,
+						CltvExpiryDelta:        3,
+						FeeProportional:        12000,
 					},
 				}}},
 			},
@@ -124,7 +125,7 @@ func Test_constructDecodedInvoice(t *testing.T) {
 				RHash:             "payment_hash",
 				Memo:              "Some description encoded in the invoice",
 				ValueMsat:         100000,
-				CreatedAt:         1662812779,
+				CreatedAt:         time.Unix(1662812779, 0),
 				PaymentAddr:       "a8d5d694e768fe7b3df2612dc5c19be6f078500e9af5765657fd0f87ec64e7b0",
 				FallbackAddr:      "something",
 				Expiry:            120,

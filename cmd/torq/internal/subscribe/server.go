@@ -397,3 +397,41 @@ func StartClnForwardsService(ctx context.Context, conn *grpc.ClientConn, db *sql
 
 	cln2.SubscribeAndStoreForwards(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
 }
+
+func StartClnInvoicesService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServiceInvoicesService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStoreInvoices(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
+
+func StartClnPaymentsService(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB, nodeId int) {
+
+	serviceType := services_helpers.ClnServicePaymentsService
+
+	defer log.Info().Msgf("%v terminated for nodeId: %v", serviceType.String(), nodeId)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("%v is panicking (nodeId: %v) %v", serviceType.String(), nodeId, string(debug.Stack()))
+			cache.SetFailedNodeServiceState(serviceType, nodeId)
+			return
+		}
+	}()
+
+	cache.SetPendingNodeServiceState(serviceType, nodeId)
+
+	cln2.SubscribeAndStorePayments(ctx, cln.NewNodeClient(conn), db, cache.GetNodeSettingsByNodeId(nodeId))
+}
