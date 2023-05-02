@@ -8,3 +8,4 @@ export { default as Switch } from "components/forms/switch/Switch";
 export { InputColorVaraint, InputSizeVariant } from "components/forms/variants";
 export { default as InputRow } from "components/forms/row/InputRow";
 export { default as RadioChips } from "components/forms/chips/RadioChips";
+export { default as Slider } from "components/forms/slider/Slider";

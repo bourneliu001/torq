@@ -1,4 +1,5 @@
 import { InputColorVaraint, InputSizeVariant } from "./input/variants";
+import { ReactNode } from "react";
 
 export type BasicInputType = {
   label?: string;
@@ -8,6 +9,8 @@ export type BasicInputType = {
   leftIcon?: React.ReactNode;
   errorText?: string;
   warningText?: string;
+  infoText?: string;
   helpText?: string;
   intercomTarget?: string;
+  button?: ReactNode;
 };

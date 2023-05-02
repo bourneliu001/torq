@@ -13,6 +13,11 @@
     color: var(--input-label-color);
   }
 }
+.inputButtonWrapper {
+  display: grid;
+  grid-template-columns: auto min-content;
+  grid-gap: 8px;
+}
 .input {
   color: var(--input-color);
   font-size: var(--input-font-size);

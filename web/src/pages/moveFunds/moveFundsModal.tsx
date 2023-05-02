@@ -1,6 +1,5 @@
-import { ArrowSwap20Regular as ModalIcon } from "@fluentui/react-icons";
-import { useGetNodeConfigurationsQuery } from "apiSlice";
-// import Button, { ButtonPosition, ColorVariant, SizeVariant } from "components/buttons/Button";
+import { ArrowSwap20Regular as ModalIcon, ArrowExportUp20Regular as MaxIcon } from "@fluentui/react-icons";
+import { useGetChannelsQuery, useGetNodeConfigurationsQuery } from "apiSlice";
 import PopoutPageTemplate from "features/templates/popoutPageTemplate/PopoutPageTemplate";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -8,9 +7,17 @@ import styles from "features/transact/newAddress/newAddress.module.scss";
 import useTranslations from "services/i18n/useTranslations";
 import { nodeConfiguration } from "apiTypes";
 import Select, { SelectOptions } from "features/forms/Select";
-import { Form, Input, RadioChips } from "components/forms/forms";
-import { NumberFormatValues } from "react-number-format";
+import { Form, Input, InputRow, RadioChips } from "components/forms/forms";
 import useLocalStorage from "utils/useLocalStorage";
+import { channel } from "features/channels/channelsTypes";
+import { useAppSelector } from "store/hooks";
+import { selectActiveNetwork } from "features/network/networkSlice";
+import Button, { ColorVariant } from "components/buttons/Button";
+import { components, OptionProps, SingleValueProps } from "react-select";
+import ChannelOption from "./channelOption";
+import { NumberFormatValues } from "react-number-format";
+import { format } from "d3";
+// import { Slider } from "components/forms/forms";
 // import { useAppSelector } from store/hooks";
 // import { selectActiveNetwork } from features/network/networkSlice";
 // import Note, { NoteType } from "features/note/Note";
@@ -21,13 +28,42 @@ import useLocalStorage from "utils/useLocalStorage";
 // import ErrorSummary from "components/errors/ErrorSummary";
 // import { userEvents } from "utils/userEvents";
 
+const formatAmount = (amount: number) => format(",.0f")(amount);
+
+type ChannelOption = {
+  value: number;
+  label: string;
+  remoteBalance?: number;
+  localBalance?: number;
+  capacity?: number;
+};
+
+export function IsChannelOption(result: unknown): result is ChannelOption {
+  return (
+    result !== null &&
+    typeof result === "object" &&
+    "value" in result &&
+    "label" in result &&
+    typeof (result as { value: unknown; label: string }).value === "number"
+  );
+}
+
 function moveFundsModal() {
   const { t } = useTranslations();
   // const { track } = userEvents();
   // const toastRef = useContext(ToastContext);
   // const activeNetwork = useAppSelector(selectActiveNetwork);
   // const { data: nodes } = useGetNodesInformationByCategoryQuery(activeNetwork);
+  const navigate = useNavigate();
+  const activeNetwork = useAppSelector(selectActiveNetwork);
   const { data: nodeConfigurations } = useGetNodeConfigurationsQuery();
+  const channelsResponse = useGetChannelsQuery<{
+    data: Array<channel>;
+    isLoading: boolean;
+    isFetching: boolean;
+    isUninitialized: boolean;
+    isSuccess: boolean;
+  }>({ network: activeNetwork });
   const [nodeConfigurationOptions, setNodeConfigurationOptions] = useState<Array<SelectOptions>>();
   const [selectedFromNodeId, setSelectedFromNodeId] = useLocalStorage<SelectOptions | undefined>(
     "moveFundsFrom",
@@ -36,12 +72,21 @@ function moveFundsModal() {
   const [selectedToNodeId, setSelectedToNodeId] = useLocalStorage<SelectOptions | undefined>("moveFundsTo", undefined);
   const [amount, setAmount] = useLocalStorage<number>("moveFundsAmount", 0);
   const [moveChain, setMoveChain] = useLocalStorage<string>("moveFundsChain", "move-funds-off-chain");
-  // const [fromNodeBalance, setFromNodeBalance] = useState(0);
-  // const [toNodeBalance, setToNodeBalance] = useState(0);
+  const [channelOptions, setChannelOptions] = useState<Array<ChannelOption>>();
+
+  const [selectedChannelId, setSelectedChannelId] = useLocalStorage<number | undefined>("moveFundsChannel", undefined);
+
+  const [maxAmount, setMaxAmount] = useState<number>(0);
 
   interface Option {
     label: string;
     value: number;
+  }
+  function handleSwapNodes(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
+    e.preventDefault();
+    const temp = selectedFromNodeId;
+    setSelectedFromNodeId(selectedToNodeId);
+    setSelectedToNodeId(temp);
   }
 
   useEffect(() => {
@@ -55,6 +100,70 @@ function moveFundsModal() {
     }
   }, [nodeConfigurations]);
 
+  useEffect(() => {
+    if (channelsResponse?.data) {
+      const options: Array<ChannelOption> = channelsResponse.data
+        .filter((c) => [selectedFromNodeId].includes(c.nodeId))
+        .map((channel: channel) => {
+          return {
+            label: channel.shortChannelId,
+            value: channel.channelId,
+            remoteBalance: channel.remoteBalance,
+            localBalance: channel.localBalance,
+            capacity: channel.capacity,
+          };
+        })
+        // Sort by shortChannelId
+        .sort((a: Option, b: Option) => {
+          if (a.label > b.label) return 1;
+          if (a.label < b.label) return -1;
+          return 0;
+        });
+      setChannelOptions(options);
+      setSelectedChannelId(options[0].value);
+    }
+  }, [channelsResponse?.data?.length, selectedFromNodeId]);
+
+  useEffect(() => {
+    if (moveChain === "move-funds-off-chain") {
+      setMaxAmount(channelOptions?.find((c) => c.value === selectedChannelId)?.localBalance || 0);
+      setAmount(0);
+    } else {
+      setMaxAmount(0);
+      setAmount(0);
+    }
+  }, [selectedChannelId, channelOptions, moveChain]);
+
+  const SingleValue = ({ ...props }: SingleValueProps<unknown>) => {
+    const channel = props.data as ChannelOption;
+    return (
+      <components.SingleValue {...props}>
+        <ChannelOption
+          shortChannelId={channel?.label || ""}
+          localBalance={channel?.localBalance || 0}
+          remoteBalance={channel?.remoteBalance || 0}
+          capacity={channel?.capacity || 0}
+        />
+      </components.SingleValue>
+    );
+  };
+
+  const Option = (props: OptionProps) => {
+    const channel = props.data as ChannelOption;
+    return (
+      <div>
+        <components.Option {...props}>
+          <ChannelOption
+            shortChannelId={channel?.label || ""}
+            localBalance={channel?.localBalance || 0}
+            remoteBalance={channel?.remoteBalance || 0}
+            capacity={channel?.capacity || 0}
+          />
+        </components.Option>
+      </div>
+    );
+  };
+
   // useEffect(() => {
   //   // if nodes is missing return
   //   if (!nodes?.length) return;
@@ -64,17 +173,21 @@ function moveFundsModal() {
   //   if (selectedToNodeId) {
   //     setToNodeBalance(0);
   //   }
-  // }, [nodes, moveChain, selectedFromNodeId, selectedToNodeId]);
 
+  // }, [nodes, moveChain, selectedFromNodeId, selectedToNodeId]);
   // const handleClickNext = () => {
   //   console.log("next");
+
   // };
 
-  const navigate = useNavigate();
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    console.log("submit");
+  }
 
   return (
     <PopoutPageTemplate title={t.moveFunds} show={true} onClose={() => navigate(-1)} icon={<ModalIcon />}>
-      <Form intercomTarget={"move-funds-form"}>
+      <Form intercomTarget={"move-funds-form"} onSubmit={handleSubmit}>
         <RadioChips
           groupName={"move-funds-chain-select"}
           // helpText={t.channelBalanceEventFilterNode.ignoreWhenEventlessHelpText}
@@ -97,30 +210,56 @@ function moveFundsModal() {
             },
           ]}
         />
-        <Select
-          intercomTarget={"move-funds-from-input"}
-          label={t.from}
-          onChange={(newValue: unknown) => {
-            const value = newValue as Option;
-            if (value && value.value != 0) {
-              setSelectedFromNodeId(value.value);
-            }
-          }}
-          options={nodeConfigurationOptions}
-          value={nodeConfigurationOptions?.find((option) => option.value === selectedFromNodeId)}
-        />
-        <Select
-          intercomTarget={"move-funds-to-input"}
-          label={t.to}
-          onChange={(newValue: unknown) => {
-            const value = newValue as Option;
-            if (value && value.value != 0) {
-              setSelectedToNodeId(value.value);
-            }
-          }}
-          options={nodeConfigurationOptions}
-          value={nodeConfigurationOptions?.find((option) => option.value === selectedToNodeId)}
-        />
+        <InputRow
+          button={
+            <Button
+              intercomTarget={"move-funds-swap-nodes-button"}
+              onClick={handleSwapNodes}
+              type={"button"}
+              icon={<ModalIcon />}
+            />
+          }
+        >
+          <Select
+            intercomTarget={"move-funds-from-input"}
+            label={t.from}
+            onChange={(newValue: unknown) => {
+              const value = newValue as Option;
+              if (value && value.value != 0) {
+                setSelectedFromNodeId(value.value);
+              }
+            }}
+            options={nodeConfigurationOptions}
+            value={nodeConfigurationOptions?.find((option) => option.value === selectedFromNodeId)}
+          />
+          {/* TODO: Add a flip button */}
+          <Select
+            intercomTarget={"move-funds-to-input"}
+            label={t.to}
+            onChange={(newValue: unknown) => {
+              const value = newValue as Option;
+              if (value && value.value != 0) {
+                setSelectedToNodeId(value.value);
+              }
+            }}
+            options={nodeConfigurationOptions}
+            value={nodeConfigurationOptions?.find((option) => option.value === selectedToNodeId)}
+          />
+        </InputRow>
+        {moveChain === "move-funds-off-chain" && (
+          <Select
+            selectComponents={{ Option, SingleValue }}
+            intercomTarget={"move-funds-channel-input"}
+            label={t.channel}
+            onChange={(newValue: unknown) => {
+              if (IsChannelOption(newValue)) {
+                setSelectedChannelId(newValue.value);
+              }
+            }}
+            options={channelOptions}
+            value={channelOptions?.find((option) => option.value === selectedChannelId)}
+          />
+        )}
         <Input
           label={t.amount}
           intercomTarget={"move-funds-amount-input"}
@@ -132,7 +271,27 @@ function moveFundsModal() {
           onValueChange={(values: NumberFormatValues) => {
             setAmount(values.floatValue as number);
           }}
+          infoText={"Maximum amount is: " + formatAmount(maxAmount) + " sat"}
+          button={
+            <Button
+              buttonColor={ColorVariant.primary}
+              intercomTarget={"move-funds-max-button"}
+              icon={<MaxIcon />}
+              onClick={() => {
+                setAmount(maxAmount);
+              }}
+            />
+          }
         />
+        <Button
+          buttonColor={ColorVariant.success}
+          intercomTarget={"move-funds-confirm-button"}
+          type={"submit"}
+          // loading={loading}
+          // disabled={loading}
+        >
+          {t.confirm}
+        </Button>
       </Form>
       <div className={styles.addressTypeWrapper}></div>
       <div className={styles.addressResultWrapper}></div>

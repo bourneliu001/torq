@@ -1,48 +1,40 @@
 import React from "react";
 import classNames from "classnames";
-import NumberFormat, { NumberFormatProps } from "react-number-format";
 import {
   WarningRegular as WarningIcon,
   ErrorCircleRegular as ErrorIcon,
-  InfoRegular as InfoIcon,
   QuestionCircle16Regular as HelpIcon,
 } from "@fluentui/react-icons";
 import { GetColorClass, GetSizeClass, InputColorVaraint, InputSizeVariant } from "components/forms/input/variants";
-import styles from "./textInput.module.scss";
+import styles from "./slider.module.scss";
 import labelStyles from "components/forms/label/label.module.scss";
 import { BasicInputType } from "components/forms/formTypes";
 
-export type InputProps = React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement> &
+export type SliderProps = React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement> &
   BasicInputType;
 
 export type FormattedInputProps = {
   label?: string;
-  formatted?: boolean;
   sizeVariant?: InputSizeVariant;
   colorVariant?: InputColorVaraint;
   leftIcon?: React.ReactNode;
   errorText?: string;
   warningText?: string;
-  infoText?: string;
   helpText?: string;
   intercomTarget: string;
-  button?: React.ReactNode;
-} & NumberFormatProps;
+};
 
-function Input({
+function Slider({
   label,
-  formatted,
   sizeVariant,
   colorVariant,
   leftIcon,
   errorText,
   warningText,
-  infoText,
   helpText,
   intercomTarget,
-  button,
   ...inputProps
-}: InputProps | FormattedInputProps) {
+}: SliderProps) {
   const inputId = React.useId();
   let inputColorClass = GetColorClass(colorVariant);
   if (warningText != undefined) {
@@ -55,29 +47,9 @@ function Input({
     inputColorClass = GetColorClass(InputColorVaraint.disabled);
   }
 
-  function renderInput() {
-    if (formatted) {
-      return (
-        <NumberFormat
-          {...(inputProps as FormattedInputProps)}
-          className={classNames(styles.input, inputProps.className)}
-          id={inputProps.id || inputId}
-        />
-      );
-    } else {
-      return (
-        <input
-          {...(inputProps as InputProps)}
-          className={classNames(styles.input, inputProps.className)}
-          id={inputProps.id || inputId}
-        />
-      );
-    }
-  }
-
   return (
     <div
-      className={classNames(styles.inputWrapper, GetSizeClass(sizeVariant), inputColorClass)}
+      className={classNames(styles.sliderWrapper, GetSizeClass(sizeVariant), inputColorClass)}
       data-intercom-target={intercomTarget}
     >
       {label && (
@@ -99,21 +71,15 @@ function Input({
           )}
         </div>
       )}
-      <div className={styles.inputButtonWrapper}>
-        <div className={classNames(styles.inputFieldContainer, { [styles.hasLeftIcon]: !!leftIcon })}>
-          {leftIcon && <div className={styles.leftIcon}>{leftIcon}</div>}
-          {renderInput()}
-        </div>
-        {button && <div className={styles.button}>{button}</div>}
+      <div className={classNames(styles.inputFieldContainer, { [styles.hasLeftIcon]: !!leftIcon })}>
+        {leftIcon && <div className={styles.leftIcon}>{leftIcon}</div>}
+        <input
+          type={"range"}
+          {...(inputProps as SliderProps)}
+          className={classNames(styles.input, inputProps.className)}
+          id={inputProps.id || inputId}
+        />
       </div>
-      {infoText && (
-        <div className={classNames(styles.feedbackWrapper, styles.feedbackInfo)}>
-          <div className={styles.feedbackIcon}>
-            <InfoIcon />
-          </div>
-          <div className={styles.feedbackText}>{infoText}</div>
-        </div>
-      )}
       {errorText && (
         <div className={classNames(styles.feedbackWrapper, styles.feedbackError)}>
           <div className={styles.feedbackIcon}>
@@ -133,4 +99,4 @@ function Input({
     </div>
   );
 }
-export default Input;
+export default Slider;
