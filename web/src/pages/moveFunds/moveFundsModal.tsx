@@ -1,5 +1,5 @@
 import { ArrowSwap20Regular as ModalIcon, ArrowExportUp20Regular as MaxIcon } from "@fluentui/react-icons";
-import { useGetChannelsQuery, useGetNodeConfigurationsQuery } from "apiSlice";
+import { useGetChannelsQuery, useGetNodeConfigurationsQuery, useGetNodesWalletBalancesQuery } from "apiSlice";
 import PopoutPageTemplate from "features/templates/popoutPageTemplate/PopoutPageTemplate";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -17,16 +17,7 @@ import { components, OptionProps, SingleValueProps } from "react-select";
 import ChannelOption from "./channelOption";
 import { NumberFormatValues } from "react-number-format";
 import { format } from "d3";
-// import { Slider } from "components/forms/forms";
-// import { useAppSelector } from store/hooks";
-// import { selectActiveNetwork } from features/network/networkSlice";
-// import Note, { NoteType } from "features/note/Note";
-// import ToastContext from "features/toast/context";
-// import { toastCategory } from "features/toast/Toasts";
-// import Spinny from "features/spinny/Spinny";
-// import { ServerErrorType } from "components/errors/errors";
-// import ErrorSummary from "components/errors/ErrorSummary";
-// import { userEvents } from "utils/userEvents";
+import { userEvents } from "../../utils/userEvents";
 
 const formatAmount = (amount: number) => format(",.0f")(amount);
 
@@ -50,12 +41,11 @@ export function IsChannelOption(result: unknown): result is ChannelOption {
 
 function moveFundsModal() {
   const { t } = useTranslations();
-  // const { track } = userEvents();
+  const { track } = userEvents();
   // const toastRef = useContext(ToastContext);
-  // const activeNetwork = useAppSelector(selectActiveNetwork);
-  // const { data: nodes } = useGetNodesInformationByCategoryQuery(activeNetwork);
-  const navigate = useNavigate();
   const activeNetwork = useAppSelector(selectActiveNetwork);
+  const { data: nodesWalletBalances } = useGetNodesWalletBalancesQuery(activeNetwork);
+  const navigate = useNavigate();
   const { data: nodeConfigurations } = useGetNodeConfigurationsQuery();
   const channelsResponse = useGetChannelsQuery<{
     data: Array<channel>;
@@ -85,6 +75,12 @@ function moveFundsModal() {
   function handleSwapNodes(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.preventDefault();
     const temp = selectedFromNodeId;
+    track("Move Funds Node Swap", {
+      oldFrom: selectedFromNodeId,
+      oldTo: selectedToNodeId,
+      newFrom: selectedToNodeId,
+      newTo: temp,
+    });
     setSelectedFromNodeId(selectedToNodeId);
     setSelectedToNodeId(temp);
   }
@@ -129,10 +125,12 @@ function moveFundsModal() {
       setMaxAmount(channelOptions?.find((c) => c.value === selectedChannelId)?.localBalance || 0);
       setAmount(0);
     } else {
-      setMaxAmount(0);
+      const walletBalance =
+        nodesWalletBalances?.find((w) => w.request.nodeId === selectedFromNodeId)?.confirmedBalance || 0;
+      setMaxAmount(walletBalance);
       setAmount(0);
     }
-  }, [selectedChannelId, channelOptions, moveChain]);
+  }, [selectedChannelId, channelOptions, moveChain, nodesWalletBalances?.length]);
 
   const SingleValue = ({ ...props }: SingleValueProps<unknown>) => {
     const channel = props.data as ChannelOption;
@@ -164,24 +162,9 @@ function moveFundsModal() {
     );
   };
 
-  // useEffect(() => {
-  //   // if nodes is missing return
-  //   if (!nodes?.length) return;
-  //   if (selectedFromNodeId) {
-  //     setFromNodeBalance(nodes.find((n) => n.nodeId === selectedFromNodeId).);
-  //   }
-  //   if (selectedToNodeId) {
-  //     setToNodeBalance(0);
-  //   }
-
-  // }, [nodes, moveChain, selectedFromNodeId, selectedToNodeId]);
-  // const handleClickNext = () => {
-  //   console.log("next");
-
-  // };
-
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // TODO: Add track event
     console.log("submit");
   }
 
@@ -190,7 +173,6 @@ function moveFundsModal() {
       <Form intercomTarget={"move-funds-form"} onSubmit={handleSubmit}>
         <RadioChips
           groupName={"move-funds-chain-select"}
-          // helpText={t.channelBalanceEventFilterNode.ignoreWhenEventlessHelpText}
           options={[
             {
               label: t.offChainTx,
@@ -198,6 +180,7 @@ function moveFundsModal() {
               checked: moveChain === "move-funds-off-chain",
               onChange: (e) => {
                 setMoveChain(e.target.id);
+                track("Move Funds Chain Selected", { chain: "off-chain" });
               },
             },
             {
@@ -206,6 +189,7 @@ function moveFundsModal() {
               checked: moveChain === "move-funds-on-chain",
               onChange: (e) => {
                 setMoveChain(e.target.id);
+                track("Move Funds Chain Selected", { chain: "on-chain" });
               },
             },
           ]}
@@ -278,6 +262,7 @@ function moveFundsModal() {
               intercomTarget={"move-funds-max-button"}
               icon={<MaxIcon />}
               onClick={() => {
+                track("Move Funds Max Clicked", { amount: maxAmount, chain: moveChain });
                 setAmount(maxAmount);
               }}
             />
