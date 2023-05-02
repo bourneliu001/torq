@@ -12,12 +12,14 @@ import useLocalStorage from "utils/useLocalStorage";
 import { channel } from "features/channels/channelsTypes";
 import { useAppSelector } from "store/hooks";
 import { selectActiveNetwork } from "features/network/networkSlice";
-import Button, { ColorVariant } from "components/buttons/Button";
+import Button, { ButtonWrapper, ColorVariant } from "components/buttons/Button";
 import { components, OptionProps, SingleValueProps } from "react-select";
 import ChannelOption from "./channelOption";
 import { NumberFormatValues } from "react-number-format";
 import { format } from "d3";
 import { userEvents } from "../../utils/userEvents";
+import ErrorSummary from "../../components/errors/ErrorSummary";
+import { FormErrors } from "../../components/errors/errors";
 
 const formatAmount = (amount: number) => format(",.0f")(amount);
 
@@ -42,6 +44,7 @@ export function IsChannelOption(result: unknown): result is ChannelOption {
 function moveFundsModal() {
   const { t } = useTranslations();
   const { track } = userEvents();
+  const [formErrorState, setFormErrorState] = useState<FormErrors>({});
   // const toastRef = useContext(ToastContext);
   const activeNetwork = useAppSelector(selectActiveNetwork);
   const { data: nodesWalletBalances } = useGetNodesWalletBalancesQuery(activeNetwork);
@@ -131,6 +134,19 @@ function moveFundsModal() {
       setAmount(0);
     }
   }, [selectedChannelId, channelOptions, moveChain, nodesWalletBalances?.length]);
+
+  useEffect(() => {
+    if (amount > maxAmount) {
+      setFormErrorState({
+        server: [{ description: t.amountExceedsMax, attributes: { amount: "" } }],
+        fields: {
+          amount: [t.amountExceedsMax],
+        },
+      });
+    } else {
+      setFormErrorState({});
+    }
+  }, [amount, maxAmount]);
 
   const SingleValue = ({ ...props }: SingleValueProps<unknown>) => {
     const channel = props.data as ChannelOption;
@@ -256,6 +272,7 @@ function moveFundsModal() {
             setAmount(values.floatValue as number);
           }}
           infoText={"Maximum amount is: " + formatAmount(maxAmount) + " sat"}
+          errorText={formErrorState?.fields?.amount.toString()}
           button={
             <Button
               buttonColor={ColorVariant.primary}
@@ -268,15 +285,20 @@ function moveFundsModal() {
             />
           }
         />
-        <Button
-          buttonColor={ColorVariant.success}
-          intercomTarget={"move-funds-confirm-button"}
-          type={"submit"}
-          // loading={loading}
-          // disabled={loading}
-        >
-          {t.confirm}
-        </Button>
+        <ButtonWrapper
+          rightChildren={
+            <Button
+              buttonColor={ColorVariant.success}
+              intercomTarget={"move-funds-confirm-button"}
+              type={"submit"}
+              // loading={loading}
+              // disabled={loading}
+            >
+              {t.confirm}
+            </Button>
+          }
+        />
+        <ErrorSummary errors={formErrorState} />
       </Form>
       <div className={styles.addressTypeWrapper}></div>
       <div className={styles.addressResultWrapper}></div>

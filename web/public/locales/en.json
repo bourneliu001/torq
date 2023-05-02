@@ -90,6 +90,8 @@
   "yourChannel": "Your Channel",
   "transactions": "Transactions",
   "offChainTx": "Off-Chain",
+  "amountExceedsMax": "Amount exceeds maximum amount.",
+  "SeeFormErrors": "See form error",
   "onChainTx": "On-Chain",
   "next": "Next",
   "back": "Back",
