@@ -121,6 +121,12 @@ export const AllChannelPendingColumns: ColumnMetaData<ChannelPending>[] = [
 		key: "closedOnSecondsDelta",
 		valueType: "duration",
 	},
+	{
+		heading: "Tags",
+		type: "TagsCell",
+		key: "tags",
+		valueType: "tag",
+	},
 ];
 
 
@@ -169,4 +175,5 @@ export const ChannelsPendingFilterableColumns: Array<keyof ChannelPending> = [
 	"status",
 	"closedOn",
 	"closedOnSecondsDelta",
+	"tags",
 ];

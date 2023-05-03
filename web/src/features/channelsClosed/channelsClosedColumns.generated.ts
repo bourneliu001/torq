@@ -121,6 +121,12 @@ export const AllChannelClosedColumns: ColumnMetaData<ChannelClosed>[] = [
 			{ label: "Abandoned Closed", value: "Abandoned Closed" },
 		],
 	},
+	{
+		heading: "Tags",
+		type: "TagsCell",
+		key: "tags",
+		valueType: "tag",
+	},
 ];
 
 
@@ -169,4 +175,5 @@ export const ChannelsClosedFilterableColumns: Array<keyof ChannelClosed> = [
 	"closedOnSecondsDelta",
 	"nodeName",
 	"status",
+	"tags",
 ];

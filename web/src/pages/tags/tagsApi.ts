@@ -41,7 +41,16 @@ export const tagsApi = torqApi.injectEndpoints({
         method: "POST",
         body: tagChannel,
       }),
-      invalidatesTags: ["tags", "tag", "channels", "tagsForChannel", "channelHistory", "forwards"],
+      invalidatesTags: [
+        "tags",
+        "tag",
+        "channels",
+        "channelsClosed",
+        "channelsPending",
+        "tagsForChannel",
+        "channelHistory",
+        "forwards",
+      ],
     }),
     tagNode: builder.mutation<void, TagNodeRequest>({
       query: (tagNode) => ({
@@ -49,7 +58,17 @@ export const tagsApi = torqApi.injectEndpoints({
         method: "POST",
         body: tagNode,
       }),
-      invalidatesTags: ["tags", "tag", "tagsForNode", "channels", "channelHistory", "forwards", "peers"],
+      invalidatesTags: [
+        "tags",
+        "tag",
+        "tagsForNode",
+        "channels",
+        "channelsClosed",
+        "channelsPending",
+        "channelHistory",
+        "forwards",
+        "peers",
+      ],
     }),
     untagNode: builder.mutation<void, TagNodeRequest>({
       query: (tagNode) => ({
@@ -57,7 +76,17 @@ export const tagsApi = torqApi.injectEndpoints({
         method: "POST",
         body: tagNode,
       }),
-      invalidatesTags: ["tags", "tag", "tagsForNode", "channels", "channelHistory", "forwards", "peers"],
+      invalidatesTags: [
+        "tags",
+        "tag",
+        "tagsForNode",
+        "channels",
+        "channelsClosed",
+        "channelsPending",
+        "channelHistory",
+        "forwards",
+        "peers",
+      ],
     }),
     untagChannel: builder.mutation<void, TagChannelRequest>({
       query: (tagChannel) => ({
@@ -65,7 +94,16 @@ export const tagsApi = torqApi.injectEndpoints({
         method: "POST",
         body: tagChannel,
       }),
-      invalidatesTags: ["tags", "tag", "channels", "tagsForChannel", "channelHistory", "forwards"],
+      invalidatesTags: [
+        "tags",
+        "tag",
+        "channels",
+        "channelsClosed",
+        "channelsPending",
+        "tagsForChannel",
+        "channelHistory",
+        "forwards",
+      ],
     }),
     getChannelTags: builder.query<Array<TagResponse>, number>({
       query: (channelId) => `tags/channel/${channelId}`,

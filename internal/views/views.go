@@ -324,9 +324,11 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 			visualType: "TagsCell",
 			valueType:  "tag",
 			pages: map[TableViewPage]int{
-				PageChannels: 4,
-				PageForwards: 7,
-				PagePeers:    6,
+				PageChannels:        4,
+				PageChannelsClosed:  19,
+				PageChannelsPending: 23,
+				PageForwards:        7,
+				PagePeers:           6,
 			},
 		},
 		{
