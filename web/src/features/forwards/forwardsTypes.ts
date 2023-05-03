@@ -28,6 +28,6 @@ export type Forward = {
   tags: Array<Tag>; // this only exists on the frontend to render the tags cell
   channelTags: Array<Tag>;
   peerTags: Array<Tag>;
-  secondNodeId: number;
-  firstNodeId: number;
+  peerId: number;
+  nodeId: number;
 };

@@ -136,8 +136,8 @@ type PendingOrClosedChannel struct {
 	ClosingTransactionHash  *string    `json:"closingTransactionHash"`
 	LNDShortChannelID       string     `json:"lndShortChannelId"`
 	Capacity                int64      `json:"capacity"`
-	FirstNodeId             int        `json:"nodeId"`
-	SecondNodeId            int        `json:"peerNodeId"`
+	NodeId                  int        `json:"nodeId"`
+	PeerNodeId              int        `json:"peerNodeId"`
 	InitiatingNodeId        *int       `json:"initiatingNodeId"`
 	AcceptingNodeId         *int       `json:"acceptingNodeId"`
 	ClosingNodeId           *int       `json:"closingNodeId"`
@@ -341,8 +341,8 @@ func getClosedChannelsListHandler(c *gin.Context, db *sqlx.DB) {
 			FundingTransactionHash: fundingTransactionHash,
 			ClosingTransactionHash: channel.ClosingTransactionHash,
 			Capacity:               channel.Capacity,
-			FirstNodeId:            channel.FirstNodeId,
-			SecondNodeId:           channel.SecondNodeId,
+			NodeId:                 channel.FirstNodeId,
+			PeerNodeId:             channel.SecondNodeId,
 			InitiatingNodeId:       channel.InitiatingNodeId,
 			AcceptingNodeId:        channel.AcceptingNodeId,
 			ClosingNodeId:          channel.ClosingNodeId,
@@ -423,8 +423,8 @@ func getChannelsPendingListHandler(c *gin.Context, db *sqlx.DB) {
 			FundingTransactionHash: fundingTransactionHash,
 			ClosingTransactionHash: channel.ClosingTransactionHash,
 			Capacity:               channel.Capacity,
-			FirstNodeId:            channel.FirstNodeId,
-			SecondNodeId:           channel.SecondNodeId,
+			NodeId:                 channel.FirstNodeId,
+			PeerNodeId:             channel.SecondNodeId,
 			InitiatingNodeId:       channel.InitiatingNodeId,
 			AcceptingNodeId:        channel.AcceptingNodeId,
 			ClosingNodeId:          channel.ClosingNodeId,
