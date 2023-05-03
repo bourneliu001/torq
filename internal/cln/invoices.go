@@ -214,7 +214,8 @@ func storeInvoice(ctx context.Context,
 			routeHintsArray := constructRoutes(decodedInvoice.Routes)
 			routeHintsBytes, err := json.Marshal(routeHintsArray)
 			if err != nil {
-				return err
+				return errors.Wrapf(err,
+					"marshalling route hint failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
 			}
 			routeHintsString := string(routeHintsBytes)
 			routeHints = &routeHintsString
@@ -224,7 +225,8 @@ func storeInvoice(ctx context.Context,
 			featuresArray := constructFeatureMap(decodedInvoice.Features)
 			featuresBytes, err := json.Marshal(featuresArray)
 			if err != nil {
-				return err
+				return errors.Wrapf(err,
+					"marshalling features failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
 			}
 			featuresString := string(featuresBytes)
 			features = &featuresString

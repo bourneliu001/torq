@@ -141,8 +141,8 @@ func processForwards(ctx context.Context,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
-	for _, shortChannelId := range unprocessedShortChannelIds {
-		clnForwards, err := client.ListForwards(ctx, &cln.ListforwardsRequest{InChannel: &shortChannelId, Status: &clnStatus})
+	for ix, shortChannelId := range unprocessedShortChannelIds {
+		clnForwards, err := client.ListForwards(ctx, &cln.ListforwardsRequest{InChannel: &unprocessedShortChannelIds[ix], Status: &clnStatus})
 		if err != nil {
 			return errors.Wrapf(err, "listing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
@@ -152,7 +152,7 @@ func processForwards(ctx context.Context,
 			return errors.Wrapf(err, "storing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
 
-		clnForwards, err = client.ListForwards(ctx, &cln.ListforwardsRequest{OutChannel: &shortChannelId, Status: &clnStatus})
+		clnForwards, err = client.ListForwards(ctx, &cln.ListforwardsRequest{OutChannel: &unprocessedShortChannelIds[ix], Status: &clnStatus})
 		if err != nil {
 			return errors.Wrapf(err, "listing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
