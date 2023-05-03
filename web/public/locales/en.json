@@ -423,7 +423,6 @@
   },
   "errors": {
     "missingField": ":field: is required",
-    "LNDConnect": "Unable to connect to LND Node. Please check connection details.",
     "connect": "Unable to connect to :implementation: Node. Please check connection details."
   },
   "dashboard": "Dashboard",

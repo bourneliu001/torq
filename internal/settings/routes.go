@@ -223,13 +223,13 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 
 		publicKey, chain, network, err = getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 		if err != nil {
-			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "LNDConnect", nil)
+			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
 			return
 		}
 
 		ncd.NodeStartDate, err = getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 		if err != nil {
-			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "LNDConnect", nil)
+			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
 			return
 		}
 
@@ -443,7 +443,7 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		case core.LND:
 			publicKey, chain, network, err := getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 			if err != nil {
-				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "LNDConnect", nil)
+				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
 				return
 			}
 
@@ -461,7 +461,7 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 			if ncd.NodeStartDate == nil {
 				nodeStartDate, err := getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 				if err != nil {
-					server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "LNDConnect", nil)
+					server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
 					return
 				}
 				ncd.NodeStartDate = nodeStartDate
@@ -499,7 +499,7 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 			//if ncd.NodeStartDate == nil {
 			//	nodeStartDate, err := getNodeStartDateFromClnNode(*ncd.GRPCAddress, ncd.CaCertificateDataBytes, ncd.CertificateDataBytes, ncd.KeyDataBytes)
 			//	if err != nil {
-			//		server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "LNDConnect", nil)
+			//		server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
 			//		return
 			//	}
 			//	ncd.NodeStartDate = nodeStartDate
