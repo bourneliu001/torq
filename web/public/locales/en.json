@@ -172,6 +172,9 @@
   "nodeName": "Node Name",
   "grpcAddress": "GRPC Address (IP or Tor)",
   "tlsCertificate": "TLS Certificate",
+  "caCertificate": "Certificate Authority",
+  "certificate": "Client Certificate",
+  "key": "Client Private Key",
   "nodeStartDate": "Starting date of the node (leave empty to get automatically)",
   "macaroon": "Macaroon",
   "summary": "Summary",
@@ -420,7 +423,8 @@
   },
   "errors": {
     "missingField": ":field: is required",
-    "LNDConnect": "Unable to connect to LND Node. Please check connection details."
+    "LNDConnect": "Unable to connect to LND Node. Please check connection details.",
+    "connect": "Unable to connect to :implementation: Node. Please check connection details."
   },
   "dashboard": "Dashboard",
   "dashboardPage": {
