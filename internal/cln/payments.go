@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
+	"github.com/lncapital/torq/internal/core"
 	"github.com/lncapital/torq/internal/services_helpers"
 	"github.com/lncapital/torq/proto/cln"
 )
@@ -68,17 +69,21 @@ func listAndProcessPayments(ctx context.Context,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
-	err := processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_FAILED, nodeSettings, bootStrapping)
-	if err != nil {
-		return errors.Wrap(err, "processing failed payments")
-	}
-	err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_PENDING, nodeSettings, bootStrapping)
-	if err != nil {
-		return errors.Wrap(err, "processing pending payments")
-	}
-	err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_COMPLETE, nodeSettings, bootStrapping)
+	err := processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_COMPLETE, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrap(err, "processing completed payments")
+	}
+
+	if cache.GetNodeConnectionDetails(nodeSettings.NodeId).CustomSettings.
+		HasNodeConnectionDetailCustomSettings(core.ImportFailedPayments) {
+		err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_FAILED, nodeSettings, bootStrapping)
+		if err != nil {
+			return errors.Wrap(err, "processing failed payments")
+		}
+		err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_PENDING, nodeSettings, bootStrapping)
+		if err != nil {
+			return errors.Wrap(err, "processing pending payments")
+		}
 	}
 
 	if bootStrapping {
@@ -103,21 +108,17 @@ func processPayments(ctx context.Context,
 		return errors.Wrapf(err, "listing payments for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storePayments(ctx, db, client, clnPayments.Payments, serviceType, nodeSettings, bootStrapping)
+	err = storePayments(db, clnPayments.Payments, serviceType, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrap(err, "storing payments")
 	}
 
-	if bootStrapping {
-		log.Info().Msgf("Initial import of payments is done for nodeId: %v", nodeSettings.NodeId)
-		cache.SetActiveNodeServiceState(serviceType, nodeSettings.NodeId)
-	}
+	cache.SetInitializingNodeServiceState(serviceType, nodeSettings.NodeId)
+
 	return nil
 }
 
-func storePayments(ctx context.Context,
-	db *sqlx.DB,
-	client client_ListPayments,
+func storePayments(db *sqlx.DB,
 	clnPayments []*cln.ListsendpaysPayments,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
@@ -138,7 +139,7 @@ func storePayments(ctx context.Context,
 		if createdAt.Before(*lastCreatedAt) {
 			continue
 		}
-		err = storePayment(ctx, db, client, clnPayment, nodeSettings)
+		err = storePayment(db, clnPayment, nodeSettings)
 		if err != nil {
 			return errors.Wrapf(err, "persisting invoice for nodeId: %v", nodeSettings.NodeId)
 		}
@@ -150,9 +151,7 @@ func storePayments(ctx context.Context,
 	return nil
 }
 
-func storePayment(ctx context.Context,
-	db *sqlx.DB,
-	client client_ListPayments,
+func storePayment(db *sqlx.DB,
 	clnPayment *cln.ListsendpaysPayments,
 	nodeSettings cache.NodeSettingsCache) error {
 

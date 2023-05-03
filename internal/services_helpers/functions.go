@@ -223,15 +223,15 @@ func (st *ServiceType) GetNodeConnectionDetailCustomSettings() []core.NodeConnec
 		return nil
 	}
 	switch *st {
-	case LndServicePaymentsService:
+	case LndServicePaymentsService, ClnServicePaymentsService:
 		return []core.NodeConnectionDetailCustomSettings{core.ImportFailedPayments, core.ImportPayments}
-	case LndServiceHtlcEventStream:
+	case LndServiceHtlcEventStream, ClnServiceHtlcsService:
 		return []core.NodeConnectionDetailCustomSettings{core.ImportHtlcEvents}
-	case LndServiceTransactionStream:
+	case LndServiceTransactionStream, ClnServiceTransactionsService:
 		return []core.NodeConnectionDetailCustomSettings{core.ImportTransactions}
-	case LndServiceInvoiceStream:
+	case LndServiceInvoiceStream, ClnServiceInvoicesService:
 		return []core.NodeConnectionDetailCustomSettings{core.ImportInvoices}
-	case LndServiceForwardsService:
+	case LndServiceForwardsService, ClnServiceForwardsService:
 		return []core.NodeConnectionDetailCustomSettings{core.ImportForwards, core.ImportHistoricForwards}
 	default:
 		log.Error().Msgf("DEVELOPMENT ERROR: ServiceType not supported")
@@ -239,25 +239,41 @@ func (st *ServiceType) GetNodeConnectionDetailCustomSettings() []core.NodeConnec
 	}
 }
 
-func GetNodeConnectionDetailServiceType(cs core.NodeConnectionDetailCustomSettings) *ServiceType {
+func GetNodeConnectionDetailServiceType(implementation core.Implementation,
+	cs core.NodeConnectionDetailCustomSettings) *ServiceType {
 	switch {
 	case cs.HasNodeConnectionDetailCustomSettings(core.ImportFailedPayments),
 		cs.HasNodeConnectionDetailCustomSettings(core.ImportPayments):
-		lndServicePaymentStream := LndServicePaymentsService
-		return &lndServicePaymentStream
+		p := LndServicePaymentsService
+		if implementation == core.CLN {
+			p = ClnServicePaymentsService
+		}
+		return &p
 	case cs.HasNodeConnectionDetailCustomSettings(core.ImportHtlcEvents):
-		lndServiceHtlcEventStream := LndServiceHtlcEventStream
-		return &lndServiceHtlcEventStream
+		h := LndServiceHtlcEventStream
+		if implementation == core.CLN {
+			h = ClnServiceHtlcsService
+		}
+		return &h
 	case cs.HasNodeConnectionDetailCustomSettings(core.ImportTransactions):
-		lndServiceTransactionStream := LndServiceTransactionStream
-		return &lndServiceTransactionStream
+		t := LndServiceTransactionStream
+		if implementation == core.CLN {
+			t = ClnServiceTransactionsService
+		}
+		return &t
 	case cs.HasNodeConnectionDetailCustomSettings(core.ImportInvoices):
-		lndServiceInvoiceStream := LndServiceInvoiceStream
-		return &lndServiceInvoiceStream
+		i := LndServiceInvoiceStream
+		if implementation == core.CLN {
+			i = ClnServiceInvoicesService
+		}
+		return &i
 	case cs.HasNodeConnectionDetailCustomSettings(core.ImportForwards),
 		cs.HasNodeConnectionDetailCustomSettings(core.ImportHistoricForwards):
-		lndServiceForwardStream := LndServiceForwardsService
-		return &lndServiceForwardStream
+		f := LndServiceForwardsService
+		if implementation == core.CLN {
+			f = ClnServiceForwardsService
+		}
+		return &f
 	default:
 		log.Error().Msgf("DEVELOPMENT ERROR: NodeConnectionDetailCustomSettings not supported")
 		return nil

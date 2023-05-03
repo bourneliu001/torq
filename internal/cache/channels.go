@@ -40,6 +40,8 @@ const (
 	writeChannel
 	// writeChannelStatusId Please provide ChannelId and Status
 	writeChannelStatusId
+	// writeChannelFlags Please provide ChannelId and Flags
+	writeChannelFlags
 )
 
 type ChannelCache struct {
@@ -253,6 +255,14 @@ func handleChannelOperation(channelCache ChannelCache,
 		}
 		allChannelStatusCache[channelIdType(channelCache.ChannelId)] = channelCache.Status
 		settings.Status = channelCache.Status
+		allChannelSettingsByChannelIdCache[channelIdType(channelCache.ChannelId)] = settings
+	case writeChannelFlags:
+		if channelCache.ChannelId == 0 {
+			log.Error().Msgf("No empty ChannelId (%v) allowed", channelCache.ChannelId)
+			break
+		}
+		settings := allChannelSettingsByChannelIdCache[channelIdType(channelCache.ChannelId)]
+		settings.Flags = channelCache.Flags
 		allChannelSettingsByChannelIdCache[channelIdType(channelCache.ChannelId)] = settings
 	}
 }
@@ -469,6 +479,15 @@ func SetChannelStatus(channelId int, status core.ChannelStatus) {
 		ChannelId: channelId,
 		Status:    status,
 		Type:      writeChannelStatusId,
+	}
+	ChannelsCacheChannel <- channelCache
+}
+
+func SetChannelFlags(channelId int, flags core.ChannelFlags) {
+	channelCache := ChannelCache{
+		ChannelId: channelId,
+		Flags:     flags,
+		Type:      writeChannelFlags,
 	}
 	ChannelsCacheChannel <- channelCache
 }

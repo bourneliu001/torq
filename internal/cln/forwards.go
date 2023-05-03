@@ -73,6 +73,7 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 	bootStrapping bool) error {
 
 	var unprocessedShortChannelIds []string
+	var closedChannelIds []int
 	channels := cache.GetChannelSettingsByNodeId(nodeSettings.NodeId)
 	for _, channel := range channels {
 		// We don't want the forwards for closed channels when they have the flag core.ImportedForwards
@@ -83,6 +84,9 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 			continue
 		}
 		unprocessedShortChannelIds = append(unprocessedShortChannelIds, *channel.ShortChannelId)
+		if channel.Status >= core.CooperativeClosed {
+			closedChannelIds = append(closedChannelIds, channel.ChannelId)
+		}
 	}
 
 	err := processForwards(ctx, db, client, serviceType,
@@ -107,6 +111,17 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 			cln.ListforwardsRequest_FAILED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
+		}
+	}
+	for _, closedChannelId := range closedChannelIds {
+		channelSetting := cache.GetChannelSettingByChannelId(closedChannelId)
+		channelSetting.AddChannelFlags(core.ImportedForwards)
+		cache.SetChannelFlags(closedChannelId, channelSetting.Flags)
+		_, err = db.Exec(`UPDATE channel SET flags=$1, updated_on=$2 WHERE channel_id=$3`,
+			channelSetting.Flags, time.Now().UTC(), channelSetting.ChannelId)
+		if err != nil {
+			return errors.Wrapf(err, "updating channel flag for channelId: %v, nodeId: %v",
+				channelSetting.ChannelId, nodeSettings.NodeId)
 		}
 	}
 

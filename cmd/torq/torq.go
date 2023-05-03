@@ -624,6 +624,21 @@ func processTorqInitialBoot(db *sqlx.DB) {
 					if pingSystem&(*clnServiceType.GetPingSystem()) == 0 {
 						serviceStatus = services_helpers.Inactive
 					}
+				case services_helpers.ClnServiceTransactionsService,
+					services_helpers.ClnServiceHtlcsService,
+					services_helpers.ClnServiceForwardsService,
+					services_helpers.ClnServiceInvoicesService,
+					services_helpers.ClnServicePaymentsService:
+					active := false
+					for _, cs := range clnServiceType.GetNodeConnectionDetailCustomSettings() {
+						if customSettings&cs != 0 {
+							active = true
+							break
+						}
+					}
+					if !active {
+						serviceStatus = services_helpers.Inactive
+					}
 				}
 				cache.SetDesiredNodeServiceState(clnServiceType, torqNode.NodeId, serviceStatus)
 			}

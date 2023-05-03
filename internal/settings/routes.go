@@ -602,7 +602,9 @@ func setNodeConnectionDetailsCustomSettingHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	done := setService(*services_helpers.GetNodeConnectionDetailServiceType(cs), nodeId, s == core.Active)
+	ncd := cache.GetNodeConnectionDetails(nodeId)
+	done := setService(
+		*services_helpers.GetNodeConnectionDetailServiceType(ncd.Implementation, cs), nodeId, s == core.Active)
 	if !done {
 		server_errors.LogAndSendServerError(c, errors.New("Service failed please try again."))
 		return
@@ -646,14 +648,15 @@ func setNodeConnectionDetailsCustomSettingsHandler(c *gin.Context, db *sqlx.DB) 
 		return
 	}
 
+	ncd := cache.GetNodeConnectionDetails(nodeId)
 	services := make(map[bool][]services_helpers.ServiceType)
 	appendPingSystemServiceType(ps, services, core.Vector)
 	appendPingSystemServiceType(ps, services, core.Amboss)
-	appendCustomSettingServiceType(cs, services, core.ImportFailedPayments, core.ImportPayments)
-	appendCustomSettingServiceType(cs, services, core.ImportHtlcEvents)
-	appendCustomSettingServiceType(cs, services, core.ImportTransactions)
-	appendCustomSettingServiceType(cs, services, core.ImportInvoices)
-	appendCustomSettingServiceType(cs, services, core.ImportForwards, core.ImportHistoricForwards)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportFailedPayments, core.ImportPayments)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportHtlcEvents)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportTransactions)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportInvoices)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportForwards, core.ImportHistoricForwards)
 
 	_, err = setCustomSettings(db, nodeId, cs, ps)
 	if err != nil {
@@ -689,14 +692,15 @@ func appendPingSystemServiceType(ps core.PingSystem,
 	}
 }
 
-func appendCustomSettingServiceType(cs core.NodeConnectionDetailCustomSettings,
+func appendCustomSettingServiceType(implementation core.Implementation,
+	cs core.NodeConnectionDetailCustomSettings,
 	services map[bool][]services_helpers.ServiceType,
 	referenceCustomSettings ...core.NodeConnectionDetailCustomSettings) {
 
 	active := false
 	var serviceType *services_helpers.ServiceType
 	for ix, referenceCustomSetting := range referenceCustomSettings {
-		st := services_helpers.GetNodeConnectionDetailServiceType(referenceCustomSettings[ix])
+		st := services_helpers.GetNodeConnectionDetailServiceType(implementation, referenceCustomSettings[ix])
 		if serviceType == nil {
 			serviceType = st
 		}
