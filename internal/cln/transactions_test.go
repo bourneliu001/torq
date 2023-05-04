@@ -2,19 +2,14 @@ package cln
 
 import (
 	"context"
-	"encoding/hex"
 	"reflect"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
-	"github.com/lncapital/torq/internal/cache"
-	"github.com/lncapital/torq/internal/core"
 	"github.com/lncapital/torq/internal/services_helpers"
-	"github.com/lncapital/torq/internal/settings"
 	"github.com/lncapital/torq/proto/cln"
 	"github.com/lncapital/torq/testutil"
 )
@@ -63,7 +58,7 @@ func TestListTransactions(t *testing.T) {
 	}
 	defer db.Close()
 
-	nodeId, nodeSettings := setup(err, db, cancel)
+	nodeId, nodeSettings := testutil.Setup(db, cancel)
 
 	expected := getExpectedTransaction(nodeId)
 
@@ -117,17 +112,13 @@ func TestStoreTransaction(t *testing.T) {
 	}
 	defer db.Close()
 
-	nodeId, nodeSettings := setup(err, db, cancel)
+	nodeId, nodeSettings := testutil.Setup(db, cancel)
 
 	expected := getExpectedTransaction(nodeId)
 
 	clnTransaction := constructClnTransaction(expected)
 
 	err = storeTransaction(db, &clnTransaction, nodeSettings)
-	if err != nil {
-		return
-	}
-
 	if err != nil {
 		testutil.Fatalf(t, "storeTransaction", err)
 	}
@@ -165,8 +156,8 @@ func getExpectedTransaction(nodeId int) Transaction {
 
 func constructClnTransaction(expected Transaction) cln.ListtransactionsTransactions {
 	return cln.ListtransactionsTransactions{
-		Hash:        hexDecodeString(expected.TransactionHash),
-		Rawtx:       hexDecodeString(expected.RawTransactionHex),
+		Hash:        testutil.HexDecodeString(expected.TransactionHash),
+		Rawtx:       testutil.HexDecodeString(expected.RawTransactionHex),
 		Blockheight: expected.BlockHeight,
 		Txindex:     0,
 		Locktime:    0,
@@ -176,49 +167,17 @@ func constructClnTransaction(expected Transaction) cln.ListtransactionsTransacti
 			{
 				Index:        0,
 				AmountMsat:   &cln.Amount{Msat: 60_000},
-				ScriptPubKey: hexDecodeString(expected.DestAddresses[0]),
+				ScriptPubKey: testutil.HexDecodeString(expected.DestAddresses[0]),
 				ItemType:     nil,
 				Channel:      nil,
 			},
 			{
 				Index:        1,
 				AmountMsat:   &cln.Amount{Msat: 40_000},
-				ScriptPubKey: hexDecodeString(expected.DestAddresses[1]),
+				ScriptPubKey: testutil.HexDecodeString(expected.DestAddresses[1]),
 				ItemType:     nil,
 				Channel:      nil,
 			},
 		},
 	}
-}
-
-// Some common functions for tests
-func setup(err error, db *sqlx.DB, cancel context.CancelFunc) (int, cache.NodeSettingsCache) {
-	err = settings.InitializeSettingsCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Msgf("Problem initializing SettingsCache cache: %v", err)
-	}
-
-	err = settings.InitializeNodesCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Msgf("Problem initializing NodeCache cache: %v", err)
-	}
-
-	err = settings.InitializeChannelsCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Err(err).Msgf("Problem initializing ChannelCache cache: %v", err)
-	}
-	nodeId := cache.GetChannelPeerNodeIdByPublicKey(testutil.TestPublicKey1, core.Bitcoin, core.SigNet)
-	nodeSettings := cache.GetNodeSettingsByNodeId(nodeId)
-	return nodeId, nodeSettings
-}
-
-func hexDecodeString(s string) []byte {
-	ba, err := hex.DecodeString(s)
-	if err != nil {
-		log.Fatal().Msgf("Unable to convert hex to byte. (%v)", err)
-	}
-	return ba
 }

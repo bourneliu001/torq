@@ -57,7 +57,7 @@ func TestListPeers(t *testing.T) {
 	}
 	defer db.Close()
 
-	nodeId, nodeSettings := setup(err, db, cancel)
+	nodeId, nodeSettings := testutil.Setup(db, cancel)
 
 	expected := getExpectedPeer(nodeId)
 
@@ -123,7 +123,6 @@ func TestListPeers(t *testing.T) {
 	if recordCount != 2 {
 		testutil.Errorf(t, "We expected to store %d records but stored %d", 2, recordCount)
 	}
-
 }
 
 func getExpectedPeer(nodeId int) Peer {
@@ -140,7 +139,7 @@ func getExpectedPeer(nodeId int) Peer {
 
 func constructClnPeer(expected Peer) cln.ListpeersPeers {
 	return cln.ListpeersPeers{
-		Id:         hexDecodeString(cache.GetNodeSettingsByNodeId(expected.PeerNodeId).PublicKey),
+		Id:         testutil.HexDecodeString(cache.GetNodeSettingsByNodeId(expected.PeerNodeId).PublicKey),
 		Connected:  expected.ConnectionStatus == core.NodeConnectionStatusConnected,
 		RemoteAddr: expected.Address,
 	}
