@@ -130,10 +130,12 @@ func storeTransaction(db *sqlx.DB,
 
 	flags := 0
 	transactionTime := time.Now().UTC()
-	vectorData := vector.GetTransactionDetailsFromVector(hex.EncodeToString(clnTransaction.Hash), nodeSettings)
-	if vectorData.BlockHeight != 0 {
-		transactionTime = vectorData.BlockTimestamp
-		flags = int(core.TransactionTime)
+	if vector.IsVectorAvailable(nodeSettings) {
+		vectorData := vector.GetTransactionDetailsFromVector(hex.EncodeToString(clnTransaction.Hash), nodeSettings)
+		if vectorData.BlockHeight != 0 {
+			transactionTime = vectorData.BlockTimestamp
+			flags = int(core.TransactionTime)
+		}
 	}
 	_, err := db.Exec(`INSERT INTO tx
     					(timestamp, tx_hash, amount, block_height, dest_addresses, raw_tx_hex, node_id, flags)
@@ -141,7 +143,7 @@ func storeTransaction(db *sqlx.DB,
 					ON CONFLICT (timestamp, tx_hash) DO NOTHING;`,
 		transactionTime,
 		hex.EncodeToString(clnTransaction.Hash),
-		totalOutputsMsat/1000,
+		totalOutputsMsat,
 		&clnTransaction.Blockheight,
 		pq.Array(destinationAddresses),
 		hex.EncodeToString(clnTransaction.Rawtx),

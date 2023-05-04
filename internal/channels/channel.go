@@ -131,13 +131,11 @@ func addChannelOrUpdateChannelStatus(db *sqlx.DB,
 			Flags:                  existingChannel.Flags,
 		}
 	}
-	vectorActive := cache.GetVectorUrlBase() != vector.VectorUrl ||
-		(nodeSettings.Chain == core.Bitcoin && nodeSettings.Network == core.MainNet)
 	switch channel.Status {
 	case core.CooperativeClosed, core.LocalForceClosed, core.RemoteForceClosed, core.BreachClosed:
 		if channel.ClosingTransactionHash != nil && *channel.ClosingTransactionHash != "" &&
 			!existingChannelSettings.HasChannelFlags(core.ClosedOn) &&
-			vectorActive {
+			vector.IsVectorAvailable(nodeSettings) {
 
 			vectorResponse := vector.GetTransactionDetailsFromVector(*channel.ClosingTransactionHash, nodeSettings)
 			if vectorResponse.BlockHeight != 0 {
@@ -162,7 +160,7 @@ func addChannelOrUpdateChannelStatus(db *sqlx.DB,
 		if channel.FundingTransactionHash != nil &&
 			*channel.FundingTransactionHash != "" &&
 			!existingChannelSettings.HasChannelFlags(core.FundedOn) &&
-			vectorActive {
+			vector.IsVectorAvailable(nodeSettings) {
 
 			vectorResponse := vector.GetTransactionDetailsFromVector(*channel.FundingTransactionHash, nodeSettings)
 			if vectorResponse.BlockHeight != 0 {

@@ -17,13 +17,12 @@ import (
 )
 
 type Transaction struct {
-	Amount           int64          `db:"amount"`
-	NumConfirmations int32          `db:"num_confirmations"`
-	BlockHash        string         `db:"block_hash"`
-	BlockHeight      uint32         `db:"block_height"`
-	TotalFees        int64          `db:"total_fees"`
-	DestAddresses    pq.StringArray `db:"dest_addresses"`
-	Label            string         `db:"label"`
+	Amount        int64          `db:"amount"`
+	BlockHash     string         `db:"block_hash"`
+	BlockHeight   uint32         `db:"block_height"`
+	TotalFees     int64          `db:"total_fees"`
+	DestAddresses pq.StringArray `db:"dest_addresses"`
+	Label         string         `db:"label"`
 }
 
 func TestStoreTransaction(t *testing.T) {
@@ -59,11 +58,10 @@ func TestStoreTransaction(t *testing.T) {
 	}
 
 	expected := Transaction{
-		Amount:           100000,
-		NumConfirmations: 1,
-		BlockHash:        "0000000000000000000000000000000000000000000000000000000000000000",
-		BlockHeight:      1,
-		TotalFees:        1000,
+		Amount:      100000,
+		BlockHash:   "0000000000000000000000000000000000000000000000000000000000000000",
+		BlockHeight: 1,
+		TotalFees:   1000,
 		DestAddresses: []string{
 			"sb1q3e0rpuq04nknd9gzd7kfp5tqqfuvmxd3v9aaax",
 			"sb1qzfw8yz3ays09rztc9vcvpey2l2tzf2kefclmap",
@@ -71,13 +69,12 @@ func TestStoreTransaction(t *testing.T) {
 	}
 
 	_, err = storeTransaction(db, &lnrpc.Transaction{
-		TxHash:           "test",
-		Amount:           expected.Amount,
-		NumConfirmations: expected.NumConfirmations,
-		BlockHash:        expected.BlockHash,
-		BlockHeight:      int32(expected.BlockHeight),
-		TimeStamp:        time.Now().Unix(),
-		TotalFees:        expected.TotalFees,
+		TxHash:      "test",
+		Amount:      expected.Amount,
+		BlockHash:   expected.BlockHash,
+		BlockHeight: int32(expected.BlockHeight),
+		TimeStamp:   time.Now().Unix(),
+		TotalFees:   expected.TotalFees,
 		OutputDetails: []*lnrpc.OutputDetail{
 			{
 				OutputType:   lnrpc.OutputScriptType(1),
@@ -110,7 +107,6 @@ func TestStoreTransaction(t *testing.T) {
 
 	row := db.QueryRowx(`select
 		amount,
-		num_confirmations,
 		block_hash,
 		block_height,
 		total_fees,

@@ -72,16 +72,15 @@ type ChannelBalanceEvent struct {
 
 type TransactionEvent struct {
 	EventData
-	Timestamp             time.Time `json:"timestamp"`
-	TransactionHash       *string   `json:"transactionHash"`
-	Amount                *int64    `json:"amount"`
-	NumberOfConfirmations *int32    `json:"numberOfConfirmations"`
-	BlockHash             *string   `json:"blockHash"`
-	BlockHeight           *uint32   `json:"blockHeight"`
-	TotalFees             *int64    `json:"totalFees"`
-	DestinationAddresses  *[]string `json:"destinationAddresses"`
-	RawTransactionHex     *string   `json:"rawTransactionHex"`
-	Label                 *string   `json:"label"`
+	Timestamp            time.Time `json:"timestamp"`
+	TransactionHash      *string   `json:"transactionHash"`
+	Amount               *int64    `json:"amount"`
+	BlockHash            *string   `json:"blockHash"`
+	BlockHeight          *uint32   `json:"blockHeight"`
+	TotalFees            *int64    `json:"totalFees"`
+	DestinationAddresses *[]string `json:"destinationAddresses"`
+	RawTransactionHex    *string   `json:"rawTransactionHex"`
+	Label                *string   `json:"label"`
 }
 
 type ChannelEvent struct {

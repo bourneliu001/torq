@@ -72,7 +72,7 @@ func processMissingChannelData(db *sqlx.DB) {
 	torqNodeIds := cache.GetAllTorqNodeIds()
 	for _, torqNodeId := range torqNodeIds {
 		nodeSettings := cache.GetNodeSettingsByNodeId(torqNodeId)
-		if !isVectorAvailable(nodeSettings) {
+		if !vector.IsVectorAvailable(nodeSettings) {
 			continue
 		}
 		channelSettings := cache.GetChannelSettingsByNodeId(torqNodeId)
@@ -192,7 +192,7 @@ func processMissingTransactionData(db *sqlx.DB) {
 	torqNodeIds := cache.GetAllTorqNodeIds()
 	for _, torqNodeId := range torqNodeIds {
 		nodeSettings := cache.GetNodeSettingsByNodeId(torqNodeId)
-		if !isVectorAvailable(nodeSettings) {
+		if !vector.IsVectorAvailable(nodeSettings) {
 			continue
 		}
 		ncd := cache.GetNodeConnectionDetails(torqNodeId)
@@ -224,12 +224,4 @@ func processMissingTransactionData(db *sqlx.DB) {
 			time.Sleep(maintenanceVectorDelayMilliseconds * time.Millisecond)
 		}
 	}
-}
-
-func isVectorAvailable(nodeSettings cache.NodeSettingsCache) bool {
-	if cache.GetVectorUrlBase() == vector.VectorUrl && (nodeSettings.Chain != core.Bitcoin || nodeSettings.Network != core.MainNet) {
-		log.Info().Msgf("Skipping verification of funding and closing details from vector for nodeId: %v", nodeSettings.NodeId)
-		return false
-	}
-	return true
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/lncapital/torq/build"
 	"github.com/lncapital/torq/internal/cache"
+	"github.com/lncapital/torq/internal/core"
 )
 
 const VectorUrl = "https://vector.ln.capital/"
@@ -48,6 +49,13 @@ type TransactionDetailsHttpResponse struct {
 
 func GetVectorUrl(suffix string) string {
 	return cache.GetVectorUrlBase() + suffix
+}
+
+func IsVectorAvailable(nodeSettings cache.NodeSettingsCache) bool {
+	if cache.GetVectorUrlBase() != VectorUrl || (nodeSettings.Chain == core.Bitcoin && nodeSettings.Network == core.MainNet) {
+		return false
+	}
+	return true
 }
 
 func GetShortChannelIdFromVector(fundingTransactionHash string, fundingOutputIndex int,
