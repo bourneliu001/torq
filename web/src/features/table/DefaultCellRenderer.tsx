@@ -30,7 +30,7 @@ export default function DefaultCellRenderer<T>(
         case "LongTextCell":
           return (
             <LongTextCell
-              current={row[dataKey] as string}
+              text={row[dataKey] as string}
               key={dataKey.toString() + rowIndex}
               copyText={row[dataKey] as string}
               totalCell={totalsRow}

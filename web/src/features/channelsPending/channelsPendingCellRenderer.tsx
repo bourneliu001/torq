@@ -43,7 +43,7 @@ export default function channelsPendingCellRenderer(
         return (
           <LongTextCell
             key={"fundingTransactionHashCell" + rowIndex}
-            current={row.fundingTransactionHash}
+            text={row.fundingTransactionHash}
             link={row.fundingTransactionHash ? "https://mempool.space/tx/" + row.fundingTransactionHash : undefined}
             copyText={row.fundingTransactionHash}
           />
@@ -55,7 +55,7 @@ export default function channelsPendingCellRenderer(
         return (
           <LongTextCell
             key={"closingTransactionHashCell" + rowIndex}
-            current={row.closingTransactionHash}
+            text={row.closingTransactionHash}
             link={row.closingTransactionHash ? "https://mempool.space/tx/" + row.closingTransactionHash : undefined}
             copyText={row.closingTransactionHash}
           />

@@ -8,7 +8,7 @@ import styles from "./long_text_cell.module.scss";
 import { toastCategory } from "features/toast/Toasts";
 
 export type TextCellProps = {
-  current: string;
+  text: string;
   link?: string;
   copyText?: string;
   className?: string;
@@ -31,10 +31,10 @@ const LongTextCell = (props: TextCellProps) => {
         props.className
       )}
     >
-      {!props.totalCell && props.current && (
+      {!props.totalCell && props.text && (
         <div className={classNames(styles.action, styles.view)}>
           <Eye16Regular />
-          <span className={classNames(styles.content)}>{props.current}</span>
+          <span className={classNames(styles.content)}>{props.text}</span>
         </div>
       )}
       {!props.totalCell && props.copyText && (
