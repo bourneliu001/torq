@@ -9,15 +9,15 @@ const nonSummableFields: Array<string> = [
   "firstNodeId",
   "torqNodeId",
   "torqNodeName",
+  "peerTags",
 ];
 const arrayAggKeys: Array<string> = [
   "channelId",
   "channelPoint",
   "shortChannelId",
   "lndShortChannelId",
-  "tags",
   "channelTags",
-  "peerTags",
+  "tags",
 ];
 
 export function useGroupBy<T extends AnyObject>(data: Array<T>, by: GroupByOptions | undefined): Array<T> {
