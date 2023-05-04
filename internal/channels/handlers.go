@@ -404,6 +404,7 @@ func getChannelsPendingListHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	pendingChannels := make([]PendingOrClosedChannel, len(channels))
+
 	torqNodeIds := cache.GetAllTorqNodeIds()
 
 	for i, channel := range channels {
