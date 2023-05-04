@@ -5,9 +5,8 @@ const nonSummableFields: Array<string> = [
   "alias",
   "pubKey",
   "color",
-  "secondNodeId",
-  "firstNodeId",
   "torqNodeId",
+  "peerNodeId",
   "torqNodeName",
   "peerTags",
 ];
