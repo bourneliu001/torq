@@ -20,71 +20,73 @@ import (
 )
 
 type ChannelBody struct {
-	NodeId                       int                  `json:"nodeId"`
-	PeerNodeId                   int                  `json:"peerNodeId"`
-	ChannelId                    int                  `json:"channelId"`
-	ChannelPoint                 string               `json:"channelPoint"`
-	NodeName                     string               `json:"nodeName"`
-	ChannelTags                  []tags.Tag           `json:"channelTags"`
-	PeerTags                     []tags.Tag           `json:"peerTags"`
-	Active                       bool                 `json:"active"`
-	RemoteActive                 bool                 `json:"remoteActive"`
-	CurrentBlockHeight           uint32               `json:"currentBlockHeight"`
-	Gauge                        float64              `json:"gauge"`
-	RemotePubkey                 string               `json:"remotePubkey"`
-	FundingTransactionHash       string               `json:"fundingTransactionHash"`
-	FundingOutputIndex           int                  `json:"fundingOutputIndex"`
-	FundingBlockHeight           *uint32              `json:"fundingBlockHeight"`
-	FundingBlockHeightDelta      *uint32              `json:"fundingBlockHeightDelta"`
-	FundedOn                     *time.Time           `json:"fundedOn"`
-	FundedOnSecondsDelta         *uint64              `json:"fundedOnSecondsDelta"`
-	ClosingBlockHeight           *uint32              `json:"closingBlockHeight"`
-	ClosingBlockHeightDelta      *uint32              `json:"closingBlockHeightDelta"`
-	ClosedOn                     *time.Time           `json:"closedOn"`
-	ClosedOnSecondsDelta         *uint64              `json:"closedOnSecondsDelta"`
-	LNDShortChannelId            string               `json:"lndShortChannelId"`
-	ShortChannelId               string               `json:"shortChannelId"`
-	Capacity                     int64                `json:"capacity"`
-	PeerChannelCapacity          int64                `json:"peerChannelCapacity"`
-	PeerChannelCount             int                  `json:"peerChannelCount"`
-	PeerLocalBalance             int64                `json:"peerLocalBalance"`
-	PeerGauge                    float64              `json:"peerGauge"`
-	LocalBalance                 int64                `json:"localBalance"`
-	RemoteBalance                int64                `json:"remoteBalance"`
-	UnsettledBalance             int64                `json:"unsettledBalance"`
-	CommitFee                    int64                `json:"commitFee"`
-	CommitWeight                 int64                `json:"commitWeight"`
-	FeePerKw                     int64                `json:"feePerKw"`
-	FeeBase                      int64                `json:"feeBase"`
-	MinHtlc                      uint64               `json:"minHtlc"`
-	MaxHtlc                      uint64               `json:"maxHtlc"`
-	TimeLockDelta                uint32               `json:"timeLockDelta"`
-	FeeRateMilliMsat             int64                `json:"feeRateMilliMsat"`
-	RemoteFeeBase                int64                `json:"remoteFeeBase"`
-	RemoteMinHtlc                uint64               `json:"remoteMinHtlc"`
-	RemoteMaxHtlc                uint64               `json:"remoteMaxHtlc"`
-	RemoteTimeLockDelta          uint32               `json:"remoteTimeLockDelta"`
-	RemoteFeeRateMilliMsat       int64                `json:"remoteFeeRateMilliMsat"`
-	PendingForwardingHTLCsCount  int                  `json:"pendingForwardingHTLCsCount"`
-	PendingForwardingHTLCsAmount int64                `json:"pendingForwardingHTLCsAmount"`
-	PendingLocalHTLCsCount       int                  `json:"pendingLocalHTLCsCount"`
-	PendingLocalHTLCsAmount      int64                `json:"pendingLocalHTLCsAmount"`
-	PendingTotalHTLCsCount       int                  `json:"pendingTotalHTLCsCount"`
-	PendingTotalHTLCsAmount      int64                `json:"pendingTotalHTLCsAmount"`
-	TotalSatoshisSent            int64                `json:"totalSatoshisSent"`
-	NumUpdates                   uint64               `json:"numUpdates"`
-	Initiator                    bool                 `json:"initiator"`
-	ChanStatusFlags              string               `json:"chanStatusFlags"`
-	LocalChanReserveSat          int64                `json:"localChanReserveSat"`
-	RemoteChanReserveSat         int64                `json:"remoteChanReserveSat"`
-	CommitmentType               core.CommitmentType  `json:"commitmentType"`
-	Lifetime                     int64                `json:"lifetime"`
-	TotalSatoshisReceived        int64                `json:"totalSatoshisReceived"`
-	MempoolSpace                 string               `json:"mempoolSpace"`
-	AmbossSpace                  string               `json:"ambossSpace"`
-	OneMl                        string               `json:"oneMl"`
-	PeerAlias                    string               `json:"peerAlias"`
-	Private                      bool                 `json:"private"`
+	NodeId       int        `json:"nodeId"`
+	PeerNodeId   int        `json:"peerNodeId"`
+	ChannelId    int        `json:"channelId"`
+	ChannelPoint string     `json:"channelPoint"`
+	NodeName     string     `json:"nodeName"`
+	ChannelTags  []tags.Tag `json:"channelTags"`
+	PeerTags     []tags.Tag `json:"peerTags"`
+	// aggregate of ChannelTags and PeersTags to allow easier filtering
+	Tags                         []tags.Tag          `json:"tags"`
+	Active                       bool                `json:"active"`
+	RemoteActive                 bool                `json:"remoteActive"`
+	CurrentBlockHeight           uint32              `json:"currentBlockHeight"`
+	Gauge                        float64             `json:"gauge"`
+	RemotePubkey                 string              `json:"remotePubkey"`
+	FundingTransactionHash       string              `json:"fundingTransactionHash"`
+	FundingOutputIndex           int                 `json:"fundingOutputIndex"`
+	FundingBlockHeight           *uint32             `json:"fundingBlockHeight"`
+	FundingBlockHeightDelta      *uint32             `json:"fundingBlockHeightDelta"`
+	FundedOn                     *time.Time          `json:"fundedOn"`
+	FundedOnSecondsDelta         *uint64             `json:"fundedOnSecondsDelta"`
+	ClosingBlockHeight           *uint32             `json:"closingBlockHeight"`
+	ClosingBlockHeightDelta      *uint32             `json:"closingBlockHeightDelta"`
+	ClosedOn                     *time.Time          `json:"closedOn"`
+	ClosedOnSecondsDelta         *uint64             `json:"closedOnSecondsDelta"`
+	LNDShortChannelId            string              `json:"lndShortChannelId"`
+	ShortChannelId               string              `json:"shortChannelId"`
+	Capacity                     int64               `json:"capacity"`
+	PeerChannelCapacity          int64               `json:"peerChannelCapacity"`
+	PeerChannelCount             int                 `json:"peerChannelCount"`
+	PeerLocalBalance             int64               `json:"peerLocalBalance"`
+	PeerGauge                    float64             `json:"peerGauge"`
+	LocalBalance                 int64               `json:"localBalance"`
+	RemoteBalance                int64               `json:"remoteBalance"`
+	UnsettledBalance             int64               `json:"unsettledBalance"`
+	CommitFee                    int64               `json:"commitFee"`
+	CommitWeight                 int64               `json:"commitWeight"`
+	FeePerKw                     int64               `json:"feePerKw"`
+	FeeBase                      int64               `json:"feeBase"`
+	MinHtlc                      uint64              `json:"minHtlc"`
+	MaxHtlc                      uint64              `json:"maxHtlc"`
+	TimeLockDelta                uint32              `json:"timeLockDelta"`
+	FeeRateMilliMsat             int64               `json:"feeRateMilliMsat"`
+	RemoteFeeBase                int64               `json:"remoteFeeBase"`
+	RemoteMinHtlc                uint64              `json:"remoteMinHtlc"`
+	RemoteMaxHtlc                uint64              `json:"remoteMaxHtlc"`
+	RemoteTimeLockDelta          uint32              `json:"remoteTimeLockDelta"`
+	RemoteFeeRateMilliMsat       int64               `json:"remoteFeeRateMilliMsat"`
+	PendingForwardingHTLCsCount  int                 `json:"pendingForwardingHTLCsCount"`
+	PendingForwardingHTLCsAmount int64               `json:"pendingForwardingHTLCsAmount"`
+	PendingLocalHTLCsCount       int                 `json:"pendingLocalHTLCsCount"`
+	PendingLocalHTLCsAmount      int64               `json:"pendingLocalHTLCsAmount"`
+	PendingTotalHTLCsCount       int                 `json:"pendingTotalHTLCsCount"`
+	PendingTotalHTLCsAmount      int64               `json:"pendingTotalHTLCsAmount"`
+	TotalSatoshisSent            int64               `json:"totalSatoshisSent"`
+	NumUpdates                   uint64              `json:"numUpdates"`
+	Initiator                    bool                `json:"initiator"`
+	ChanStatusFlags              string              `json:"chanStatusFlags"`
+	LocalChanReserveSat          int64               `json:"localChanReserveSat"`
+	RemoteChanReserveSat         int64               `json:"remoteChanReserveSat"`
+	CommitmentType               core.CommitmentType `json:"commitmentType"`
+	Lifetime                     int64               `json:"lifetime"`
+	TotalSatoshisReceived        int64               `json:"totalSatoshisReceived"`
+	MempoolSpace                 string              `json:"mempoolSpace"`
+	AmbossSpace                  string              `json:"ambossSpace"`
+	OneMl                        string              `json:"oneMl"`
+	PeerAlias                    string              `json:"peerAlias"`
+	Private                      bool                `json:"private"`
 }
 
 type PendingHtlcs struct {
@@ -128,9 +130,11 @@ type NodeForTag struct {
 }
 
 type PendingOrClosedChannel struct {
-	ChannelID               int        `json:"channelId"`
-	ChannelTags             []tags.Tag `json:"channelTags"`
-	PeerTags                []tags.Tag `json:"peerTags"`
+	ChannelID   int        `json:"channelId"`
+	ChannelTags []tags.Tag `json:"channelTags"`
+	PeerTags    []tags.Tag `json:"peerTags"`
+	// aggregate of ChannelTags and PeersTags to allow easier filtering
+	Tags                    []tags.Tag `json:"tags"`
 	ShortChannelID          *string    `json:"shortChannelId"`
 	FundingTransactionHash  string     `json:"fundingTransactionHash"`
 	ClosingTransactionHash  *string    `json:"closingTransactionHash"`
@@ -261,6 +265,7 @@ func GetChannelsByIds(nodeId int, channelIds []int) ([]ChannelBody, error) {
 			OneMl:                        core.ONEML + shortChannelIdString,
 			Private:                      channelSettings.Private,
 		}
+		chanBody.Tags = append(chanBody.PeerTags, chanBody.ChannelTags...)
 
 		if channelSettings.FundingBlockHeight != nil {
 			delta := cache.GetBlockHeight() - *channelSettings.FundingBlockHeight
@@ -354,6 +359,7 @@ func getClosedChannelsListHandler(c *gin.Context, db *sqlx.DB) {
 			PublicKey:              cache.GetNodeSettingsByNodeId(torqNodeId).PublicKey,
 			PeerAlias:              cache.GetNodeAlias(peerNodeId),
 		}
+		closedChannels[i].Tags = append(closedChannels[i].PeerTags, closedChannels[i].PeerTags...)
 
 		if channel.ClosingNodeId != nil {
 			closedChannels[i].ClosingNodeName = cache.GetNodeAlias(*channel.ClosingNodeId)
@@ -397,7 +403,7 @@ func getChannelsPendingListHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	closedChannels := make([]PendingOrClosedChannel, len(channels))
+	pendingChannels := make([]PendingOrClosedChannel, len(channels))
 	torqNodeIds := cache.GetAllTorqNodeIds()
 
 	for i, channel := range channels {
@@ -415,7 +421,7 @@ func getChannelsPendingListHandler(c *gin.Context, db *sqlx.DB) {
 			fundingTransactionHash = *channel.FundingTransactionHash
 		}
 
-		closedChannels[i] = PendingOrClosedChannel{
+		pendingChannels[i] = PendingOrClosedChannel{
 			ChannelID:              channel.ChannelID,
 			ChannelTags:            tags.GetTagsByTagIds(cache.GetTagIdsByChannelId(channel.ChannelID)),
 			PeerTags:               tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(channel.SecondNodeId)),
@@ -436,30 +442,31 @@ func getChannelsPendingListHandler(c *gin.Context, db *sqlx.DB) {
 			PublicKey:              cache.GetNodeSettingsByNodeId(torqNodeId).PublicKey,
 			PeerAlias:              cache.GetNodeAlias(peerNodeId),
 		}
+		pendingChannels[i].Tags = append(pendingChannels[i].PeerTags, pendingChannels[i].PeerTags...)
 
 		if channel.ClosingNodeId != nil {
-			closedChannels[i].ClosingNodeName = cache.GetNodeAlias(*channel.ClosingNodeId)
+			pendingChannels[i].ClosingNodeName = cache.GetNodeAlias(*channel.ClosingNodeId)
 		}
 		if channel.FundingBlockHeight != nil {
 			delta := cache.GetBlockHeight() - *channel.FundingBlockHeight
-			closedChannels[i].FundingBlockHeightDelta = &delta
+			pendingChannels[i].FundingBlockHeightDelta = &delta
 		}
 		if channel.FundedOn != nil {
 			deltaSeconds := uint64(time.Since(*channel.FundedOn).Seconds())
-			closedChannels[i].FundedOnSecondsDelta = &deltaSeconds
+			pendingChannels[i].FundedOnSecondsDelta = &deltaSeconds
 		}
 		if channel.ClosingBlockHeight != nil {
 			delta := cache.GetBlockHeight() - *channel.ClosingBlockHeight
-			closedChannels[i].ClosingBlockHeightDelta = &delta
+			pendingChannels[i].ClosingBlockHeightDelta = &delta
 		}
 		if channel.ClosedOn != nil {
 			deltaSeconds := uint64(time.Since(*channel.ClosedOn).Seconds())
-			closedChannels[i].ClosedOnSecondsDelta = &deltaSeconds
+			pendingChannels[i].ClosedOnSecondsDelta = &deltaSeconds
 		}
 
 	}
 
-	c.JSON(http.StatusOK, closedChannels)
+	c.JSON(http.StatusOK, pendingChannels)
 }
 
 func calculateHTLCs(htlcs []cache.Htlc) PendingHtlcs {
