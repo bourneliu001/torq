@@ -52,12 +52,14 @@ func getForwardsTableHandler(c *gin.Context, db *sqlx.DB) {
 
 type forwardsTableRow struct {
 	// Alias of remote peer
-	Alias        null.String `json:"alias"`
-	ChannelTags  []tags.Tag  `json:"channelTags"`
-	PeerTags     []tags.Tag  `json:"peerTags"`
-	TorqNodeId   int         `json:"torqNodeId"`
-	TorqNodeName string      `json:"torqNodeName"`
-	PeerNodeId   int         `json:"peerNodeId"`
+	Alias       null.String `json:"alias"`
+	ChannelTags []tags.Tag  `json:"channelTags"`
+	PeerTags    []tags.Tag  `json:"peerTags"`
+	// Aggregate of ChannelTags and PeerTags for easier filtering
+	Tags         []tags.Tag `json:"tags"`
+	TorqNodeId   int        `json:"torqNodeId"`
+	TorqNodeName string     `json:"torqNodeName"`
+	PeerNodeId   int        `json:"peerNodeId"`
 	// Database primary key of channel
 	ChannelID              *int   `json:"channelId"`
 	FundingTransactionHash string `json:"fundingTransactionHash"`
@@ -249,6 +251,8 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 			c.ChannelTags = tags.GetTagsByTagIds(cache.GetTagIdsByChannelId(*c.ChannelID))
 		}
 		c.PeerTags = tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(c.PeerNodeId))
+
+		c.Tags = append(c.PeerTags, c.ChannelTags...)
 
 		// Append to the result
 		r = append(r, c)

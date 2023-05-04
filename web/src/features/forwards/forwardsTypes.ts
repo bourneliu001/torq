@@ -25,7 +25,7 @@ export type Forward = {
   turnoverIn: number;
   turnoverTotal: number;
   localNodeIds: Array<number>;
-  tags: Array<Tag>; // this only exists on the frontend to render the tags cell
+  tags: Array<Tag>; // this is aggregate of channelTags and peerTags for the frontend filters
   channelTags: Array<Tag>;
   peerTags: Array<Tag>;
   peerNodeId: number;
