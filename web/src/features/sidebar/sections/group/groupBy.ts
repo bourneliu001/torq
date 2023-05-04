@@ -15,6 +15,8 @@ const arrayAggKeys: Array<string> = [
   "channelPoint",
   "shortChannelId",
   "lndShortChannelId",
+  "fundingOutputIndex",
+  "fundingTransactionHash",
   "channelTags",
   "tags",
 ];
