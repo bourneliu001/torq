@@ -219,12 +219,15 @@ func storeForwards(db *sqlx.DB,
 		}
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			dummy := time.Date(2000, 1, 1, 0, 0, 0, 0, nil)
-			latestForward = &dummy
+		if !errors.Is(err, sql.ErrNoRows) {
+			return errors.Wrapf(err, "obtaining maximum forward time for transactions for nodeId: %v",
+				nodeSettings.NodeId)
 		}
-		return errors.Wrapf(err, "obtaining maximum forward time for transactions for nodeId: %v",
-			nodeSettings.NodeId)
+	}
+
+	if latestForward == nil {
+		dummy := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+		latestForward = &dummy
 	}
 
 	for _, clnForward := range clnForwards {
@@ -285,13 +288,12 @@ func storeForward(db *sqlx.DB,
 			outgoingShortChannelId)
 		outgoingChannelIdP = nil
 	}
+	// Duplication will get fixed once CLN supports paging
 	_, err := db.Exec(`INSERT INTO forward
-    					(time, time_ns, fee_msat, incoming_amount_msat, incoming_channel_id,
+    					(time, fee_msat, incoming_amount_msat, incoming_channel_id,
     					 outgoing_amount_msat, outgoing_channel_id, node_id)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-					ON CONFLICT (time, time_ns) DO NOTHING;`,
+					VALUES ($1, $2, $3, $4, $5, $6, $7);`,
 		forwardTime,
-		time.Unix(0, int64(clnForward.ReceivedTime)).Round(time.Microsecond).UTC(),
 		feeMsat,
 		inMsat,
 		incomingChannelIdP,
@@ -347,14 +349,12 @@ func storeHtlc(db *sqlx.DB,
 	}
 	_, err = db.Exec(`
 		INSERT INTO htlc_event
-		    (time, timestamp_ns,
-		     event_origin, data, event_type,
+		    (time, data, event_type,
 		     incoming_channel_id, incoming_amt_msat, incoming_htlc_id,
 		     outgoing_channel_id, outgoing_amt_msat, outgoing_htlc_id,
 		     node_id, cln_forward_status_id
-		) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`,
-		forwardTime, time.Unix(0, int64(clnForward.ReceivedTime)).Round(time.Microsecond).UTC(),
-		"HtlcEvent_ForwardFailEvent", string(jb), "ForwardFailEvent",
+		) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+		forwardTime, string(jb), "ForwardFailEvent",
 		incomingChannelIdP, inMsat, clnForward.InHtlcId,
 		outgoingChannelIdP, outMsat, clnForward.OutHtlcId,
 		nodeSettings.NodeId, status,

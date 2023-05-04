@@ -1,8 +1,17 @@
 package testutil
 
 import (
+	"context"
+	"encoding/hex"
 	"fmt"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
+
+	"github.com/lncapital/torq/internal/cache"
+	"github.com/lncapital/torq/internal/core"
+	"github.com/lncapital/torq/internal/settings"
 )
 
 const colorReset = "\033[0m"
@@ -34,4 +43,35 @@ func Errorf(t *testing.T, txt string, a ...interface{}) {
 
 func Fatalf(t *testing.T, txt string, a ...interface{}) {
 	t.Fatalf(fmt.Sprintf(colorRed+"  "+failed+"  "+txt+colorReset, a...))
+}
+
+func HexDecodeString(s string) []byte {
+	ba, err := hex.DecodeString(s)
+	if err != nil {
+		log.Fatal().Msgf("Unable to convert hex to byte. (%v)", err)
+	}
+	return ba
+}
+
+func Setup(db *sqlx.DB, cancel context.CancelFunc) (int, cache.NodeSettingsCache) {
+	err := settings.InitializeSettingsCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Msgf("Problem initializing SettingsCache cache: %v", err)
+	}
+
+	err = settings.InitializeNodesCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Msgf("Problem initializing NodeCache cache: %v", err)
+	}
+
+	err = settings.InitializeChannelsCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Err(err).Msgf("Problem initializing ChannelCache cache: %v", err)
+	}
+	nodeId := cache.GetChannelPeerNodeIdByPublicKey(TestPublicKey1, core.Bitcoin, core.SigNet)
+	nodeSettings := cache.GetNodeSettingsByNodeId(nodeId)
+	return nodeId, nodeSettings
 }
