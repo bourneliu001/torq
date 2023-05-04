@@ -29,12 +29,12 @@ type Transaction struct {
 	NodeId            int            `db:"node_id"`
 }
 
-// mockClnListTransactions
-type mockClnListTransactions struct {
+// stubClnListTransactions
+type stubClnListTransactions struct {
 	Transactions []*cln.ListtransactionsTransactions
 }
 
-func (c *mockClnListTransactions) ListTransactions(ctx context.Context,
+func (c *stubClnListTransactions) ListTransactions(ctx context.Context,
 	in *cln.ListtransactionsRequest,
 	opts ...grpc.CallOption) (*cln.ListtransactionsResponse, error) {
 
@@ -69,7 +69,7 @@ func TestListTransactions(t *testing.T) {
 
 	clnTransaction := constructClnTransaction(expected)
 
-	mclient := mockClnListTransactions{
+	mclient := stubClnListTransactions{
 		Transactions: []*cln.ListtransactionsTransactions{
 			&clnTransaction,
 		},
@@ -80,43 +80,26 @@ func TestListTransactions(t *testing.T) {
 		err = listAndProcessTransactions(context.Background(), db, &mclient, services_helpers.ClnServiceTransactionsService,
 			nodeSettings, false)
 		if err != nil {
-			cancel()
 			log.Fatal().Err(err).Msgf("Problem in listAndProcessTransactions: %v", err)
 		}
 	}
 
-	testutil.Given(t, "listAndProcessTransactions ran twice for the same transaction.")
-
-	testutil.WhenF(t, "We need to check that blockHeight was updated.")
-	{
-		returned, err := getMaximumBlockHeight(db, nodeSettings)
-		switch {
-		case err != nil:
-			testutil.Fatalf(t, "We get an error: %v", err)
-		case uint32(returned) != expected.BlockHeight:
-			testutil.Errorf(t, " "+
-				"We expected %d got %d", expected, returned)
-		case uint32(returned) == expected.BlockHeight:
-			testutil.Successf(t, "We got the expected blockheight ")
-		}
-
+	maximumBlockHeight, err := getMaximumBlockHeight(db, nodeSettings)
+	if err != nil {
+		testutil.Fatalf(t, "We get an error: %v", err)
+	}
+	if uint32(maximumBlockHeight) != expected.BlockHeight {
+		testutil.Errorf(t, " "+
+			"We expected %d got %d", expected.BlockHeight, maximumBlockHeight)
 	}
 
-	testutil.WhenF(t, "We need to check that the transaction was stored with an unique record.")
-	{
-		var expectedUnique = 1
-		var returned int
-		err := db.QueryRow("select count(*) from tx;").Scan(&returned)
-
-		switch {
-		case err != nil:
-			testutil.Fatalf(t, "We get an error: %v", err)
-		case returned != expectedUnique:
-			testutil.Errorf(t, "We expected to store %d records but stored %d", expectedUnique,
-				returned)
-		case returned == expectedUnique:
-			testutil.Successf(t, "We stored the expected number of records")
-		}
+	var recordCount int
+	err = db.QueryRow("select count(*) from tx;").Scan(&recordCount)
+	if err != nil {
+		testutil.Fatalf(t, "We get an error: %v", err)
+	}
+	if recordCount != 1 {
+		testutil.Errorf(t, "We expected to store %d records but stored %d", 1, recordCount)
 	}
 }
 
