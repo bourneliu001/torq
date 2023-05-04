@@ -15,6 +15,7 @@ const testData: Array<any> = [
     countTotal: 20,
     htlcFailAllIn: 10,
     htlcFailAllOut: 150,
+    torqNodeId: 1,
   },
   {
     alias: "Another Node",
@@ -29,6 +30,7 @@ const testData: Array<any> = [
     countTotal: 10,
     htlcFailAllIn: 5,
     htlcFailAllOut: 50,
+    torqNodeId: 1,
   },
   {
     alias: "Some Node",
@@ -43,6 +45,7 @@ const testData: Array<any> = [
     countTotal: 10,
     htlcFailAllIn: 10,
     htlcFailAllOut: 100,
+    torqNodeId: 1,
   },
   {
     alias: "Some Node",
@@ -57,6 +60,7 @@ const testData: Array<any> = [
     countTotal: 0,
     htlcFailAllIn: 0,
     htlcFailAllOut: 0,
+    torqNodeId: 1,
   },
 ];
 
@@ -94,6 +98,7 @@ test("grouping by peers returns correctly grouped channels", () => {
       countTotal: 30,
       htlcFailAllIn: 20,
       htlcFailAllOut: 250,
+      torqNodeId: 1,
     },
     {
       alias: "Another Node",
@@ -108,6 +113,7 @@ test("grouping by peers returns correctly grouped channels", () => {
       countTotal: 10,
       htlcFailAllIn: 5,
       htlcFailAllOut: 50,
+      torqNodeId: 1,
     },
   ];
 

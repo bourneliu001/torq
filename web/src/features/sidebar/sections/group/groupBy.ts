@@ -1,6 +1,15 @@
 import { GroupByOptions } from "features/viewManagement/types";
+import { AnyObject } from "utils/types";
 
-const nonSummableFields: Array<string> = ["alias", "pubKey", "color", "secondNodeId", "firstNodeId"];
+const nonSummableFields: Array<string> = [
+  "alias",
+  "pubKey",
+  "color",
+  "secondNodeId",
+  "firstNodeId",
+  "torqNodeId",
+  "torqNodeName",
+];
 const arrayAggKeys: Array<string> = [
   "channelId",
   "channelPoint",
@@ -11,8 +20,7 @@ const arrayAggKeys: Array<string> = [
   "peerTags",
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useGroupBy<T>(data: Array<any>, by: GroupByOptions | undefined): Array<T> {
+export function useGroupBy<T extends AnyObject>(data: Array<T>, by: GroupByOptions | undefined): Array<T> {
   if (by !== "peer") {
     return data;
   }
@@ -20,11 +28,16 @@ export function useGroupBy<T>(data: Array<any>, by: GroupByOptions | undefined):
   const summedPubKey: typeof data = [];
 
   for (const chan of data) {
-    const pub_key = String(chan["pubKey" as keyof typeof chan]);
+    const pubKey = String(chan["pubKey" as keyof T]);
+    const torqNodeId = String(chan["torqNodeId" as keyof T]);
 
-    const summedChan = summedPubKey.find((sc) => sc["pubKey" as keyof typeof sc] == pub_key);
+    console.log(torqNodeId);
+    const summedChan = summedPubKey.find(
+      (sc) => sc["pubKey" as keyof typeof sc] == pubKey && sc["torqNodeId" as keyof typeof sc] == torqNodeId
+    );
     if (!summedChan) {
       summedPubKey.push(chan);
+      console.log("pushing");
       continue;
     }
 
@@ -35,8 +48,10 @@ export function useGroupBy<T>(data: Array<any>, by: GroupByOptions | undefined):
         continue;
       }
 
+      console.log(key);
       // Values fround in arrayAggKeys should be converted to an array of values
       if (arrayAggKeys.includes(key)) {
+        console.log("it's considered an array");
         let valueArr = [];
         if (Array.isArray(value)) {
           valueArr = [...value];
@@ -46,18 +61,19 @@ export function useGroupBy<T>(data: Array<any>, by: GroupByOptions | undefined):
 
         // If the previous result is not already an Array, create a new one
         if (!Array.isArray(summedChan[key as keyof typeof summedChan])) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (summedChan as { [key: string]: any })[key] = [summedChan[key as keyof typeof summedChan], ...valueArr];
+          (summedChan as { [key: string]: unknown })[key] = [summedChan[key as keyof typeof summedChan], ...valueArr];
           continue;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (summedChan as { [key: string]: any })[key] = [...summedChan[key as keyof typeof summedChan], ...valueArr];
+        (summedChan as { [key: string]: unknown })[key] = [
+          ...(summedChan[key as keyof typeof summedChan] as []),
+          ...valueArr,
+        ];
         continue;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (summedChan as { [key: string]: any })[key] = (summedChan[key as keyof typeof summedChan] as number) + value;
+      (summedChan as { [key: string]: unknown })[key] =
+        (summedChan[key as keyof typeof summedChan] as number) + (value as number);
     }
   }
 
