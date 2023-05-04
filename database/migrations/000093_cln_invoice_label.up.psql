@@ -1,0 +1,14 @@
+
+ALTER TABLE invoice ADD COLUMN label TEXT;
+ALTER TABLE invoice ADD COLUMN bolt11 TEXT;
+ALTER TABLE invoice ADD COLUMN bolt12 TEXT;
+ALTER TABLE invoice ADD COLUMN type INTEGER;
+
+ALTER TABLE payment ADD COLUMN label TEXT;
+ALTER TABLE payment ADD COLUMN bolt11 TEXT;
+ALTER TABLE payment ADD COLUMN bolt12 TEXT;
+ALTER TABLE payment ADD COLUMN description TEXT;
+ALTER TABLE payment ADD COLUMN destination_node_id INTEGER;
+ALTER TABLE payment ALTER COLUMN destination_pub_key DROP EXPRESSION;
+
+ALTER TABLE payment ADD CONSTRAINT fk_payment_destination_node_id FOREIGN KEY (destination_node_id) REFERENCES node(node_id);

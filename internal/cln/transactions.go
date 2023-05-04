@@ -116,6 +116,7 @@ func storeTransactions(db *sqlx.DB,
 func storeTransaction(db *sqlx.DB,
 	clnTransaction *cln.ListtransactionsTransactions,
 	nodeSettings cache.NodeSettingsCache) error {
+
 	// Here we're only storing the output addresses, not the output index, amount or if these
 	// transactions are ours or not. We might want to add this.
 	var totalOutputsMsat uint64

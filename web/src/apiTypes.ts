@@ -31,6 +31,12 @@ export interface nodeConfiguration {
   tlsFile?: File | null;
   macaroonFileName?: string;
   macaroonFile?: File | null;
+  caCertificateFileName?: string;
+  caCertificateFile?: File | null;
+  certificateFileName?: string;
+  certificateFile?: File | null;
+  keyFileName?: string;
+  keyFile?: File | null;
   createdOn?: Date;
   updatedOn?: Date;
   status: number;

@@ -51,15 +51,14 @@ func getAllNodeInformationByNetwork(db *sqlx.DB, network core.Network) ([]NodeIn
 			Alias:     nodeEvent.Alias,
 			Color:     nodeEvent.Color,
 		}
-
-		var addresses []NodeAddress
-		err = json.Unmarshal(nodeEvent.NodeAddresses, &addresses)
-		if err != nil {
-			return nil, errors.Wrap(err, "Unmarshalling json to project on to nodeAddress struct")
+		if nodeEvent.NodeAddresses != nil {
+			var addresses []NodeAddress
+			err = json.Unmarshal(nodeEvent.NodeAddresses, &addresses)
+			if err != nil {
+				return nil, errors.Wrap(err, "Unmarshalling json to project on to nodeAddress struct")
+			}
+			ni.Addresses = &addresses
 		}
-
-		ni.Addresses = &addresses
-
 		ps = append(ps, ni)
 	}
 	return ps, nil

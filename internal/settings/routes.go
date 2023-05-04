@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -189,43 +190,106 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	if ncd.TLSFile == nil || ncd.MacaroonFile == nil || ncd.GRPCAddress == nil || *ncd.GRPCAddress == "" {
-		server_errors.SendBadRequest(c, "All node details are required to add new node connection details")
-		return
-	}
+	var publicKey string
+	var chain core.Chain
+	var network core.Network
+	var canSignMessages bool
+	switch ncd.Implementation {
+	case core.LND:
+		if ncd.TLSFile == nil || ncd.MacaroonFile == nil || ncd.GRPCAddress == nil || *ncd.GRPCAddress == "" {
+			server_errors.SendBadRequest(c, "All node details are required to add new node connection details")
+			return
+		}
 
-	ncd, err = processTLS(ncd)
-	if err != nil {
-		server_errors.LogAndSendServerError(c, err)
-		return
-	}
-	if len(ncd.TLSDataBytes) == 0 {
-		server_errors.SendBadRequest(c, "Can't check new gRPC details without TLS Cert")
-		return
-	}
+		ncd.TLSFileName, ncd.TLSDataBytes, err = processFile(ncd.TLSFile)
+		if err != nil {
+			server_errors.LogAndSendServerError(c, errors.New("Reading TLS File"))
+			return
+		}
+		if len(ncd.TLSDataBytes) == 0 {
+			server_errors.SendBadRequest(c, "Can't check new gRPC details without TLS Cert")
+			return
+		}
 
-	ncd, err = processMacaroon(ncd)
-	if err != nil {
-		server_errors.LogAndSendServerError(c, err)
-		return
-	}
-	if len(ncd.MacaroonDataBytes) == 0 {
-		server_errors.SendBadRequest(c, "Can't check new gRPC details without Macaroon File")
-		return
-	}
+		ncd.MacaroonFileName, ncd.MacaroonDataBytes, err = processFile(ncd.MacaroonFile)
+		if err != nil {
+			server_errors.LogAndSendServerError(c, errors.New("Reading Macaroon File"))
+			return
+		}
+		if len(ncd.MacaroonDataBytes) == 0 {
+			server_errors.SendBadRequest(c, "Can't check new gRPC details without Macaroon File")
+			return
+		}
 
-	publicKey, chain, network, err := getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-	if err != nil {
-		server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "LNDConnect", nil)
-		return
-	}
+		publicKey, chain, network, err = getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		if err != nil {
+			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
+			return
+		}
 
-	nodeStartDate, err := getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-	if err != nil {
-		server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "LNDConnect", nil)
-		return
+		ncd.NodeStartDate, err = getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		if err != nil {
+			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
+			return
+		}
+
+		canSignMessages, err = getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
+			return
+		}
+		if !canSignMessages {
+			ncd.PingSystem = 0
+		}
+
+	case core.CLN:
+		if ncd.CaCertificateFile == nil || ncd.CertificateFile == nil || ncd.KeyFile == nil || ncd.GRPCAddress == nil || *ncd.GRPCAddress == "" {
+			server_errors.SendBadRequest(c, "All node details are required to add new node connection details")
+			return
+		}
+
+		ncd.CaCertificateFileName, ncd.CaCertificateDataBytes, err = processFile(ncd.CaCertificateFile)
+		if err != nil {
+			server_errors.LogAndSendServerError(c, errors.New("Reading CA Certificate File"))
+			return
+		}
+		if len(ncd.CaCertificateDataBytes) == 0 {
+			server_errors.SendBadRequest(c, "Can't check new gRPC details without TLS Cert")
+			return
+		}
+		ncd.CertificateFileName, ncd.CertificateDataBytes, err = processFile(ncd.CertificateFile)
+		if err != nil {
+			server_errors.LogAndSendServerError(c, errors.New("Reading Client Certificate File"))
+			return
+		}
+		if len(ncd.CertificateDataBytes) == 0 {
+			server_errors.SendBadRequest(c, "Can't check new gRPC details without Client Certificate File")
+			return
+		}
+		ncd.KeyFileName, ncd.KeyDataBytes, err = processFile(ncd.KeyFile)
+		if err != nil {
+			server_errors.LogAndSendServerError(c, errors.New("Reading Client Private Key File"))
+			return
+		}
+		if len(ncd.KeyDataBytes) == 0 {
+			server_errors.SendBadRequest(c, "Can't check new gRPC details without Client Private Key File")
+			return
+		}
+
+		publicKey, chain, network, err =
+			getInformationFromClnNode(*ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
+		if err != nil {
+			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from CLN Node"), "connect", map[string]string{"implementation": "CLN"})
+			return
+		}
+
+		//ncd.NodeStartDate, err = getNodeStartDateFromClnNode(*ncd.GRPCAddress, ncd.CaCertificateDataBytes, ncd.CertificateDataBytes, ncd.KeyDataBytes)
+		// TODO FIXME CLN: Once the CLN gRPC support paging we can do this.
+		//if err != nil {
+		//	server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from CLN Node"), "connect", map[string]string{"implementation": "CLN"})
+		//	return
+		//}
 	}
-	ncd.NodeStartDate = nodeStartDate
 
 	nodeId := cache.GetPeerNodeIdByPublicKey(publicKey, chain, network)
 	if nodeId == 0 {
@@ -250,16 +314,6 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		if strings.TrimSpace(ncd.Name) == "" {
 			ncd.Name = existingNcd.Name
 		}
-	}
-
-	canSignMessages, err := getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-	if err != nil {
-		server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
-		return
-	}
-
-	if !canSignMessages {
-		ncd.PingSystem = 0
 	}
 
 	if strings.TrimSpace(ncd.Name) == "" {
@@ -320,15 +374,34 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		ncd.Name = fmt.Sprintf("Node_%v", ncd.NodeId)
 	}
 
-	ncd, err = processTLS(ncd)
-	if err != nil {
-		server_errors.WrapLogAndSendServerError(c, err, "Processing TLS file")
-		return
-	}
-	ncd, err = processMacaroon(ncd)
-	if err != nil {
-		server_errors.WrapLogAndSendServerError(c, err, "Processing Macaroon file")
-		return
+	switch ncd.Implementation {
+	case core.LND:
+		ncd.TLSFileName, ncd.TLSDataBytes, err = processFile(ncd.TLSFile)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Processing TLS file")
+			return
+		}
+		ncd.MacaroonFileName, ncd.MacaroonDataBytes, err = processFile(ncd.MacaroonFile)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Processing Macaroon file")
+			return
+		}
+	case core.CLN:
+		ncd.CaCertificateFileName, ncd.CaCertificateDataBytes, err = processFile(ncd.CaCertificateFile)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Processing CA Certificate file")
+			return
+		}
+		ncd.CertificateFileName, ncd.CertificateDataBytes, err = processFile(ncd.CertificateFile)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Processing Client Certificate file")
+			return
+		}
+		ncd.KeyFileName, ncd.KeyDataBytes, err = processFile(ncd.KeyFile)
+		if err != nil {
+			server_errors.WrapLogAndSendServerError(c, err, "Processing Client Private Key file")
+			return
+		}
 	}
 
 	existingNcd, err := getNodeConnectionDetails(db, ncd.NodeId)
@@ -337,9 +410,14 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	lndDetailsUpdate := false
-	if len(ncd.MacaroonDataBytes) > 0 || len(ncd.TLSDataBytes) > 0 || *ncd.GRPCAddress != *existingNcd.GRPCAddress {
-		lndDetailsUpdate = true
+	detailsUpdate := false
+	if len(ncd.MacaroonDataBytes) > 0 ||
+		len(ncd.TLSDataBytes) > 0 ||
+		len(ncd.CaCertificateDataBytes) > 0 ||
+		len(ncd.CertificateDataBytes) > 0 ||
+		len(ncd.KeyDataBytes) > 0 ||
+		*ncd.GRPCAddress != *existingNcd.GRPCAddress {
+		detailsUpdate = true
 	}
 
 	if len(ncd.TLSDataBytes) == 0 && len(existingNcd.TLSDataBytes) != 0 {
@@ -360,43 +438,74 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	if lndDetailsUpdate {
-		publicKey, chain, network, err := getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-		if err != nil {
-			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "LNDConnect", nil)
-			return
+	if detailsUpdate {
+		switch ncd.Implementation {
+		case core.LND:
+			publicKey, chain, network, err := getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+			if err != nil {
+				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
+				return
+			}
+
+			existingPublicKey, existingChain, existingNetwork, err := GetNodeDetailsById(db, ncd.NodeId)
+			if err != nil {
+				server_errors.WrapLogAndSendServerError(c, err, "Obtaining existing node")
+				return
+			}
+			if existingPublicKey != publicKey || existingChain != chain || existingNetwork != network {
+				server_errors.SendUnprocessableEntity(c, "PublicKey/chain/network does not match, create a new node instead of updating this one")
+				return
+			}
+
+			// Get node start date from LND if user didn't give it manually
+			if ncd.NodeStartDate == nil {
+				nodeStartDate, err := getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+				if err != nil {
+					server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
+					return
+				}
+				ncd.NodeStartDate = nodeStartDate
+			}
+
+			canSignMessages, err := getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+			if err != nil {
+				server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
+				return
+			}
+
+			if !canSignMessages {
+				ncd.PingSystem = 0
+			}
+		case core.CLN:
+			publicKey, chain, network, err :=
+				getInformationFromClnNode(*ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
+			if err != nil {
+				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from CLN Node"), "connect", map[string]string{"implementation": "CLN"})
+				return
+			}
+
+			existingPublicKey, existingChain, existingNetwork, err := GetNodeDetailsById(db, ncd.NodeId)
+			if err != nil {
+				server_errors.WrapLogAndSendServerError(c, err, "Obtaining existing node")
+				return
+			}
+			if existingPublicKey != publicKey || existingChain != chain || existingNetwork != network {
+				server_errors.SendUnprocessableEntity(c, "PublicKey/chain/network does not match, create a new node instead of updating this one")
+				return
+			}
+
+			//// Get node start date from CLN if user didn't give it manually
+			// TODO FIXME CLN: Once the CLN gRPC support paging we can do this.
+			//if ncd.NodeStartDate == nil {
+			//	nodeStartDate, err := getNodeStartDateFromClnNode(*ncd.GRPCAddress, ncd.CaCertificateDataBytes, ncd.CertificateDataBytes, ncd.KeyDataBytes)
+			//	if err != nil {
+			//		server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
+			//		return
+			//	}
+			//	ncd.NodeStartDate = nodeStartDate
+			//}
 		}
 
-		existingPublicKey, existingChain, existingNetwork, err := GetNodeDetailsById(db, ncd.NodeId)
-		if err != nil {
-			server_errors.WrapLogAndSendServerError(c, err, "Obtaining existing node")
-			return
-		}
-		if existingPublicKey != publicKey || existingChain != chain || existingNetwork != network {
-			server_errors.SendUnprocessableEntity(c, "PublicKey/chain/network does not match, create a new node instead of updating this one")
-			return
-		}
-
-		canSignMessages, err := getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-		if err != nil {
-			server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
-			return
-		}
-
-		if !canSignMessages {
-			ncd.PingSystem = 0
-		}
-
-	}
-
-	// Get node start date from lnd if user didn't give it manually
-	if ncd.NodeStartDate == nil {
-		nodeStartDate, err := getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
-		if err != nil {
-			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "LNDConnect", nil)
-			return
-		}
-		ncd.NodeStartDate = nodeStartDate
 	}
 
 	nodeSettings := cache.GetNodeSettingsByNodeId(ncd.NodeId)
@@ -429,6 +538,16 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 }
 
 func fixBindFailures(c *gin.Context, ncd NodeConnectionDetails) (NodeConnectionDetails, error) {
+	// TODO c.Bind cannot process status?
+	implementation, err := strconv.Atoi(c.Request.Form.Get("implementation"))
+	if err != nil {
+		return NodeConnectionDetails{}, errors.New("Failed to find/parse implementation in the request.")
+	}
+	if implementation > int(core.CLN) {
+		return NodeConnectionDetails{}, errors.New("Failed to parse implementation in the request.")
+	}
+	ncd.Implementation = core.Implementation(implementation)
+
 	// TODO c.Bind cannot process status?
 	statusId, err := strconv.Atoi(c.Request.Form.Get("status"))
 	if err != nil {
@@ -602,7 +721,9 @@ func setNodeConnectionDetailsCustomSettingHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	done := setService(*services_helpers.GetNodeConnectionDetailServiceType(cs), nodeId, s == core.Active)
+	ncd := cache.GetNodeConnectionDetails(nodeId)
+	done := setService(
+		*services_helpers.GetNodeConnectionDetailServiceType(ncd.Implementation, cs), nodeId, s == core.Active)
 	if !done {
 		server_errors.LogAndSendServerError(c, errors.New("Service failed please try again."))
 		return
@@ -646,14 +767,15 @@ func setNodeConnectionDetailsCustomSettingsHandler(c *gin.Context, db *sqlx.DB) 
 		return
 	}
 
+	ncd := cache.GetNodeConnectionDetails(nodeId)
 	services := make(map[bool][]services_helpers.ServiceType)
 	appendPingSystemServiceType(ps, services, core.Vector)
 	appendPingSystemServiceType(ps, services, core.Amboss)
-	appendCustomSettingServiceType(cs, services, core.ImportFailedPayments, core.ImportPayments)
-	appendCustomSettingServiceType(cs, services, core.ImportHtlcEvents)
-	appendCustomSettingServiceType(cs, services, core.ImportTransactions)
-	appendCustomSettingServiceType(cs, services, core.ImportInvoices)
-	appendCustomSettingServiceType(cs, services, core.ImportForwards, core.ImportHistoricForwards)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportFailedPayments, core.ImportPayments)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportHtlcEvents)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportTransactions)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportInvoices)
+	appendCustomSettingServiceType(ncd.Implementation, cs, services, core.ImportForwards, core.ImportHistoricForwards)
 
 	_, err = setCustomSettings(db, nodeId, cs, ps)
 	if err != nil {
@@ -689,14 +811,15 @@ func appendPingSystemServiceType(ps core.PingSystem,
 	}
 }
 
-func appendCustomSettingServiceType(cs core.NodeConnectionDetailCustomSettings,
+func appendCustomSettingServiceType(implementation core.Implementation,
+	cs core.NodeConnectionDetailCustomSettings,
 	services map[bool][]services_helpers.ServiceType,
 	referenceCustomSettings ...core.NodeConnectionDetailCustomSettings) {
 
 	active := false
 	var serviceType *services_helpers.ServiceType
 	for ix, referenceCustomSetting := range referenceCustomSettings {
-		st := services_helpers.GetNodeConnectionDetailServiceType(referenceCustomSettings[ix])
+		st := services_helpers.GetNodeConnectionDetailServiceType(implementation, referenceCustomSettings[ix])
 		if serviceType == nil {
 			serviceType = st
 		}
@@ -854,36 +977,19 @@ func getSignMessagesPermissionFromLndNode(grpcAddress string, tlsCert []byte, ma
 	return signMsgResp.Signature != "", nil
 }
 
-func processTLS(ncd NodeConnectionDetails) (NodeConnectionDetails, error) {
-	if ncd.TLSFile != nil {
-		ncd.TLSFileName = &ncd.TLSFile.Filename
-		tlsDataFile, err := ncd.TLSFile.Open()
+func processFile(file *multipart.FileHeader) (fileName *string, data []byte, err error) {
+	if file != nil {
+		fileName = &file.Filename
+		caCertificateDataFile, err := file.Open()
 		if err != nil {
-			return NodeConnectionDetails{}, errors.Wrap(err, "Opening TLS file")
+			return nil, nil, errors.Wrap(err, "opening file")
 		}
-		tlsData, err := io.ReadAll(tlsDataFile)
+		data, err = io.ReadAll(caCertificateDataFile)
 		if err != nil {
-			return NodeConnectionDetails{}, errors.Wrap(err, "Reading TLS file")
+			return nil, nil, errors.Wrap(err, "reading file")
 		}
-		ncd.TLSDataBytes = tlsData
 	}
-	return ncd, nil
-}
-
-func processMacaroon(ncd NodeConnectionDetails) (NodeConnectionDetails, error) {
-	if ncd.MacaroonFile != nil {
-		ncd.MacaroonFileName = &ncd.MacaroonFile.Filename
-		macaroonDataFile, err := ncd.MacaroonFile.Open()
-		if err != nil {
-			return NodeConnectionDetails{}, errors.Wrap(err, "Opening macaroon file")
-		}
-		macaroonData, err := io.ReadAll(macaroonDataFile)
-		if err != nil {
-			return NodeConnectionDetails{}, errors.Wrap(err, "Reading macaroon file")
-		}
-		ncd.MacaroonDataBytes = macaroonData
-	}
-	return ncd, nil
+	return fileName, data, nil
 }
 
 func getNodeStartDateFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile []byte) (*time.Time, error) {

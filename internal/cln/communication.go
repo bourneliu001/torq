@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -234,6 +235,16 @@ func NewPayment(request lightning_helpers.NewPaymentRequest) lightning_helpers.N
 	return lightning_helpers.NewPaymentResponse{}
 }
 
+func DecodeInvoice(request lightning_helpers.DecodeInvoiceRequest) lightning_helpers.DecodeInvoiceResponse {
+	responseChan := make(chan any)
+	processSequential(context.Background(), 2, request, responseChan)
+	response := <-responseChan
+	if res, ok := response.(lightning_helpers.DecodeInvoiceResponse); ok {
+		return res
+	}
+	return lightning_helpers.DecodeInvoiceResponse{}
+}
+
 const concurrentWorkLimit = 10
 
 var serviceSequential = lightningService{limit: make(chan struct{}, 1)}                   //nolint:gochecknoglobals
@@ -300,6 +311,112 @@ func processRequestConcurrent(ctx context.Context, cancel context.CancelFunc, re
 }
 
 func processRequestByType(ctx context.Context, req any, responseChan chan<- any) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("CLN is panicking: %v", string(debug.Stack()))
+
+			communicationResponse := lightning_helpers.CommunicationResponse{
+				Status: lightning_helpers.Inactive,
+				Error:  fmt.Sprintf("CLN is panicking: %v", err),
+			}
+			switch r := req.(type) {
+			case lightning_helpers.InformationRequest:
+				responseChan <- lightning_helpers.InformationResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.SignMessageRequest:
+				responseChan <- lightning_helpers.SignMessageResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.SignatureVerificationRequest:
+				responseChan <- lightning_helpers.SignatureVerificationResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.RoutingPolicyUpdateRequest:
+				responseChan <- lightning_helpers.RoutingPolicyUpdateResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.ConnectPeerRequest:
+				responseChan <- lightning_helpers.ConnectPeerResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.DisconnectPeerRequest:
+				responseChan <- lightning_helpers.DisconnectPeerResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.WalletBalanceRequest:
+				responseChan <- lightning_helpers.WalletBalanceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.ListPeersRequest:
+				responseChan <- lightning_helpers.ListPeersResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewAddressRequest:
+				responseChan <- lightning_helpers.NewAddressResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.OpenChannelRequest:
+				responseChan <- lightning_helpers.OpenChannelResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.CloseChannelRequest:
+				responseChan <- lightning_helpers.CloseChannelResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewInvoiceRequest:
+				responseChan <- lightning_helpers.NewInvoiceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.OnChainPaymentRequest:
+				responseChan <- lightning_helpers.OnChainPaymentResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.NewPaymentRequest:
+				responseChan <- lightning_helpers.NewPaymentResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			case lightning_helpers.DecodeInvoiceRequest:
+				responseChan <- lightning_helpers.DecodeInvoiceResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
+			}
+			responseChan <- nil
+			return
+		}
+	}()
+
 	switch r := req.(type) {
 	case lightning_helpers.InformationRequest:
 		responseChan <- processGetInfoRequest(ctx, r)
@@ -342,6 +459,9 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 		return
 	case lightning_helpers.NewPaymentRequest:
 		responseChan <- processNewPaymentRequest(ctx, r)
+		return
+	case lightning_helpers.DecodeInvoiceRequest:
+		responseChan <- processDecodeInvoiceRequest(ctx, r)
 		return
 	}
 
@@ -1167,6 +1287,8 @@ func prepareInvoiceRequest(request lightning_helpers.NewInvoiceRequest) (*cln.In
 	if request.Private != nil {
 		req.Exposeprivatechannels = request.Private
 	}
+	// TODO FIXME CLN Better labeling?
+	req.Label = time.Now().UTC().Format("20060102.150405.000000")
 	// TODO FIXME CLN AMP?
 	return req, nil
 }
@@ -1234,23 +1356,24 @@ func processNewPaymentRequest(ctx context.Context,
 		return response
 	}
 
+	timeOutSecs := uint32(request.TimeOutSecs)
 	p := &cln.PayRequest{
-		Bolt11:        "",
-		AmountMsat:    nil,
-		Label:         nil,
-		Riskfactor:    nil,
-		Maxfeepercent: nil,
-		RetryFor:      nil,
-		Maxdelay:      nil,
-		Exemptfee:     nil,
-		Localinvreqid: nil,
-		Exclude:       nil,
-		Maxfee:        nil,
-		Description:   nil,
+		// TODO FIXME CLN Add support for more of these options to our UI
+		Bolt11:     *request.Invoice,
+		AmountMsat: &cln.Amount{Msat: uint64(*request.AmtMSat)},
+		//Label:         request.,
+		//Riskfactor:    request.,
+		//Maxfeepercent: request.,
+		RetryFor: &timeOutSecs,
+		//Maxdelay: request.,
+		//Exemptfee:     request.,
+		//Localinvreqid: request.,
+		//Exclude:       request.,
+		Maxfee: &cln.Amount{Msat: uint64(*request.FeeLimitMsat)},
+		//Description:   request.,
 	}
 
 	resp, err := cln.NewNodeClient(connection).Pay(ctx, p)
-
 	if err != nil {
 		response.Error = err.Error()
 		return response
@@ -1271,4 +1394,130 @@ func processNewPaymentRequest(ctx context.Context,
 	}
 	response.Status = lightning_helpers.Active
 	return response
+}
+
+func processDecodeInvoiceRequest(ctx context.Context,
+	request lightning_helpers.DecodeInvoiceRequest) lightning_helpers.DecodeInvoiceResponse {
+
+	response := lightning_helpers.DecodeInvoiceResponse{
+		CommunicationResponse: lightning_helpers.CommunicationResponse{
+			Status: lightning_helpers.Inactive,
+		},
+		Request: request,
+	}
+
+	connection, err := getConnection(request.NodeId)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to obtain a GRPC connection.")
+		response.Error = err.Error()
+		return response
+	}
+
+	client := cln.NewNodeClient(connection)
+	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &request.Invoice})
+	// TODO: Handle different error types like incorrect checksum etc to explain why the decode failed.
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	response = constructDecodedInvoice(decodedInvoice, response)
+	if response.NodeAlias == "" {
+		pk, err := hex.DecodeString(response.DestinationPubKey)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to decode for public key: %v", response.DestinationPubKey)
+			return response
+		}
+		clnNode, err := client.ListNodes(ctx, &cln.ListnodesRequest{
+			Id: pk,
+		})
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to obtain node alias for public key: %v", response.DestinationPubKey)
+			return response
+		}
+		if clnNode != nil && len(clnNode.Nodes) != 0 && clnNode.Nodes[0] != nil && clnNode.Nodes[0].Alias != nil {
+			response.NodeAlias = *clnNode.Nodes[0].Alias
+		}
+	}
+	return response
+}
+
+func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
+	response lightning_helpers.DecodeInvoiceResponse) lightning_helpers.DecodeInvoiceResponse {
+	if decodedInvoice == nil || decodedInvoice.Valid == nil || !*decodedInvoice.Valid {
+		return response
+	}
+	response.Status = lightning_helpers.Active
+	response.DestinationPubKey = hex.EncodeToString(decodedInvoice.Payee)
+	nodeSettings := cache.GetNodeSettingsByNodeId(response.Request.NodeId)
+	response.NodeAlias = cache.GetNodeAlias(cache.GetPeerNodeIdByPublicKey(response.DestinationPubKey, nodeSettings.Chain, nodeSettings.Network))
+	response.RHash = hex.EncodeToString(decodedInvoice.PaymentHash)
+	if decodedInvoice.Description != nil {
+		response.Memo = *decodedInvoice.Description
+	}
+	if decodedInvoice.AmountMsat != nil {
+		response.ValueMsat = int64((*decodedInvoice.AmountMsat).Msat)
+	}
+	if decodedInvoice.Fallbacks != nil {
+		for _, fb := range decodedInvoice.Fallbacks {
+			if response.FallbackAddr == "" {
+				response.FallbackAddr = fb.GetAddr()
+			}
+		}
+	}
+	if decodedInvoice.CreatedAt != nil {
+		response.CreatedAt = time.Unix(int64(*decodedInvoice.CreatedAt), 0)
+		if decodedInvoice.Expiry != nil {
+			response.ExpireAt = response.ExpireAt.Add(time.Duration(*decodedInvoice.Expiry) * time.Second)
+		}
+	}
+	if decodedInvoice.Expiry != nil {
+		response.Expiry = int64(*decodedInvoice.Expiry)
+	}
+	if decodedInvoice.MinFinalCltvExpiry != nil {
+		response.CltvExpiry = int64(*decodedInvoice.MinFinalCltvExpiry)
+	}
+	response.RouteHints = constructRoutes(decodedInvoice.Routes)
+	response.Features = constructFeatureMap(decodedInvoice.Features)
+	return response
+}
+
+func constructRoutes(routes *cln.Routes) []lightning_helpers.RouteHint {
+	var r []lightning_helpers.RouteHint
+
+	if routes != nil {
+		for _, rh := range routes.Routes {
+			var hopHints []lightning_helpers.HopHint
+			for _, hh := range rh.Hops {
+				feeBaseMsat := uint32(0)
+				if hh.FeeBaseMsat != nil {
+					feeBaseMsat = uint32((*hh.FeeBaseMsat).Msat)
+				}
+				hopHints = append(hopHints, lightning_helpers.HopHint{
+					ShortChannelId:         hh.ShortChannelId,
+					ChannelSourcePublicKey: hex.EncodeToString(hh.Pubkey),
+					FeeBaseMsat:            feeBaseMsat,
+					CltvExpiryDelta:        hh.CltvExpiryDelta,
+					FeeProportional:        hh.FeeProportionalMillionths,
+				})
+			}
+			r = append(r, lightning_helpers.RouteHint{
+				HopHints: hopHints,
+			})
+		}
+	}
+
+	return r
+}
+
+func constructFeatureMap(features []byte) lightning_helpers.FeatureMap {
+	f := lightning_helpers.FeatureMap{}
+	//for n, v := range features {
+	//	f[n] = lightning_helpers.Feature{
+	//		Name:       v.Name,
+	//		IsKnown:    v.IsKnown,
+	//		IsRequired: v.IsRequired,
+	//	}
+	//}
+	return f
 }

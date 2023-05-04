@@ -52,11 +52,22 @@ const (
 	AbandonedClosed        = 105
 )
 
+type CommitmentType int32
+
+const (
+	CommitmentTypeUnknown = CommitmentType(iota)
+	CommitmentTypeLegacy
+	CommitmentTypeStaticRemoteKey
+	CommitmentTypeAnchors
+	CommitmentTypeScriptEnforcedLease
+)
+
 type ChannelFlags uint32
 
 const (
 	FundedOn ChannelFlags = 1 << iota
 	ClosedOn
+	ImportedForwards
 )
 const ChannelFlagsMax = int(ClosedOn)*2 - 1
 

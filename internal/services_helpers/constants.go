@@ -39,6 +39,7 @@ const (
 	ClnServiceClosedChannelsService
 	ClnServiceForwardsService
 	ClnServiceInvoicesService
+	ClnServicePaymentsService
 	ClnServiceHtlcsService
 	ClnServiceTransactionsService
 )

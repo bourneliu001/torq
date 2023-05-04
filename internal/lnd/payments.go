@@ -164,9 +164,11 @@ func storePayments(db *sqlx.DB, p []*lnrpc.Payment, nodeSettings cache.NodeSetti
                   incoming_channel_id,
                   outgoing_channel_id,
                   rebalance_amount_msat,
+                  destination_pub_key,
+                  destination_node_id,
 				  node_id,
 				  created_on)
-			  VALUES ($1, $2, $3, $4, $5,$6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+			  VALUES ($1, $2, $3, $4, $5,$6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 			  ON CONFLICT (creation_timestamp, payment_index) DO NOTHING;`
 
 	var paymentEvents []core.PaymentEvent
@@ -179,6 +181,8 @@ func storePayments(db *sqlx.DB, p []*lnrpc.Payment, nodeSettings cache.NodeSetti
 				return errors.Wrap(err, "JSON Marshal the payment HTLCs")
 			}
 
+			var destinationPublicKey *string
+			var destinationNodeId *int
 			var incomingChannelId *int
 			var outgoingChannelId *int
 			var rebalanceAmountMsat *uint64
@@ -187,7 +191,8 @@ func storePayments(db *sqlx.DB, p []*lnrpc.Payment, nodeSettings cache.NodeSetti
 					log.Error().Msgf("The payment HTLCs and/or Hops are unknown for paymentHash: %v", payment.PaymentHash)
 				}
 			} else {
-				incomingChannelId = getChannelIdByLndShortChannelId(payment.Htlcs[0].Route.Hops[len(payment.Htlcs[0].Route.Hops)-1].ChanId)
+				lastHop := payment.Htlcs[0].Route.Hops[len(payment.Htlcs[0].Route.Hops)-1]
+				incomingChannelId = getChannelIdByLndShortChannelId(lastHop.ChanId)
 				outgoingChannelId = getChannelIdByLndShortChannelId(payment.Htlcs[0].Route.Hops[0].ChanId)
 				if outgoingChannelId == nil {
 					if payment.Status != lnrpc.Payment_FAILED {
@@ -202,6 +207,9 @@ func storePayments(db *sqlx.DB, p []*lnrpc.Payment, nodeSettings cache.NodeSetti
 						rebalanceAmountMsat = &rebalanceAmountMsatV
 					}
 				}
+				destinationPublicKey = &lastHop.PubKey
+				destinationNodeIdInt := cache.GetPeerNodeIdByPublicKey(*destinationPublicKey, nodeSettings.Chain, nodeSettings.Network)
+				destinationNodeId = &destinationNodeIdInt
 			}
 			if _, err := tx.Exec(q,
 				payment.PaymentHash,
@@ -218,6 +226,8 @@ func storePayments(db *sqlx.DB, p []*lnrpc.Payment, nodeSettings cache.NodeSetti
 				incomingChannelId,
 				outgoingChannelId,
 				rebalanceAmountMsat,
+				destinationPublicKey,
+				destinationNodeId,
 				nodeSettings.NodeId,
 				time.Now().UTC(),
 			); err != nil {

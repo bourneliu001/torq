@@ -12,7 +12,7 @@ import {
   Save20Regular as SaveIcon,
 } from "@fluentui/react-icons";
 import styles from "./NodeSettings.module.scss";
-import Select, { SelectOption } from "features/forms/Select";
+import Select, {SelectOption, SelectOptions} from "features/forms/Select";
 import Spinny from "features/spinny/Spinny";
 import { toastCategory } from "features/toast/Toasts";
 import ToastContext from "features/toast/context";
@@ -56,6 +56,9 @@ const nodeConfigurationTemplate = {
   macaroonFileName: "",
   name: "",
   tlsFileName: "",
+  caCertificateFileName: "",
+  certificateFileName: "",
+  keyFileName: "",
   updatedOn: undefined,
   implementation: 0,
   nodeId: 0,
@@ -125,6 +128,11 @@ const NodeSettings = React.forwardRef(function NodeSettings(
   const [customSettingsState, setCustomSettingsState] = React.useState(customSettingsDefault);
   const [formErrorState, setFormErrorState] = React.useState({} as FormErrors);
   const [toggleErrorState, setToggleErrorState] = React.useState({} as FormErrors);
+  const [tlsEnabledState, setTlsEnabledState] = useState(true);
+  const [macaroonEnabledState, setMacaroonEnabledState] = useState(true);
+  const [caCertificateEnabledState, setCaCertificateEnabledState] = useState(false);
+  const [certificateEnabledState, setCertificateEnabledState] = useState(false);
+  const [keyEnabledState, setKeyEnabledState] = useState(false);
 
   const dispatch = useAppDispatch();
 
@@ -175,6 +183,11 @@ const NodeSettings = React.forwardRef(function NodeSettings(
       pingSystem: 0,
       customSettings: 0,
     });
+    setTlsEnabledState(true);
+    setMacaroonEnabledState(true);
+    setCaCertificateEnabledState(false);
+    setCertificateEnabledState(false);
+    setKeyEnabledState(false);
   };
 
   const handleDeleteClick = () => {
@@ -204,6 +217,15 @@ const NodeSettings = React.forwardRef(function NodeSettings(
     }
     if (nodeConfigurationState.macaroonFile) {
       form.append("macaroonFile", nodeConfigurationState.macaroonFile, nodeConfigurationState.macaroonFileName);
+    }
+    if (nodeConfigurationState.caCertificateFile) {
+      form.append("caCertificateFile", nodeConfigurationState.caCertificateFile, nodeConfigurationState.caCertificateFileName);
+    }
+    if (nodeConfigurationState.certificateFile) {
+      form.append("certificateFile", nodeConfigurationState.certificateFile, nodeConfigurationState.certificateFileName);
+    }
+    if (nodeConfigurationState.keyFile) {
+      form.append("keyFile", nodeConfigurationState.keyFile, nodeConfigurationState.keyFileName);
     }
     if (nodeConfigurationState.nodeStartDate) {
       form.append("nodeStartDate", "" + formatDate(nodeConfigurationState.nodeStartDate));
@@ -292,8 +314,20 @@ const NodeSettings = React.forwardRef(function NodeSettings(
       });
       setCustomSettingsCollapsedState(false);
     }
+    setTlsEnabledState(true);
+    setMacaroonEnabledState(true);
+    setCaCertificateEnabledState(false);
+    setCertificateEnabledState(false);
+    setKeyEnabledState(false);
     if (nodeConfigurationData != undefined && nodeConfigurationData.status == 0) {
       setSaveEnabledState(true);
+    }
+    if (nodeConfigurationData != undefined && nodeConfigurationData.implementation == 1) {
+      setTlsEnabledState(false);
+      setMacaroonEnabledState(false);
+      setCaCertificateEnabledState(true);
+      setCertificateEnabledState(true);
+      setKeyEnabledState(true);
     }
   }, [nodeConfigurationData]);
 
@@ -323,14 +357,38 @@ const NodeSettings = React.forwardRef(function NodeSettings(
   };
 
   const handleTLSFileChange = (file: File | null) => {
-    setNodeConfigurationState({ ...nodeConfigurationState, tlsFile: file, tlsFileName: file ? file.name : undefined });
+    setNodeConfigurationState({
+      ...nodeConfigurationState,
+      tlsFile: file,
+      tlsFileName: file ? file.name : undefined
+    });
   };
-
   const handleMacaroonFileChange = (file: File | null) => {
     setNodeConfigurationState({
       ...nodeConfigurationState,
       macaroonFile: file,
       macaroonFileName: file ? file.name : undefined,
+    });
+  };
+  const handleCaCertificateFileChange = (file: File | null) => {
+    setNodeConfigurationState({
+      ...nodeConfigurationState,
+      caCertificateFile: file,
+      caCertificateFileName: file ? file.name : undefined,
+    });
+  };
+  const handleCertificateFileChange = (file: File | null) => {
+    setNodeConfigurationState({
+      ...nodeConfigurationState,
+      certificateFile: file,
+      certificateFileName: file ? file.name : undefined,
+    });
+  };
+  const handleKeyFileChange = (file: File | null) => {
+    setNodeConfigurationState({
+      ...nodeConfigurationState,
+      keyFile: file,
+      keyFileName: file ? file.name : undefined,
     });
   };
 
@@ -453,7 +511,7 @@ const NodeSettings = React.forwardRef(function NodeSettings(
     return "";
   };
 
-  const implementationOptions: Array<SelectOption> = [{ value: "0", label: "LND" }];
+  const implementationOptions: Array<SelectOption> = [{ value: "0", label: "LND"}, {value: "1", label: "CLN" }];
 
   const menuButton = <MoreIcon className={styles.moreIcon} />;
   return (
@@ -517,8 +575,22 @@ const NodeSettings = React.forwardRef(function NodeSettings(
               <Select
                 intercomTarget={"node-setting-select-implementation"}
                 label={t.implementation}
-                onChange={() => {
-                  return;
+                onChange={(newValue: unknown) => {
+                  const selectOptions = newValue as SelectOptions;
+                  if (selectOptions?.value == "0") {
+                    setTlsEnabledState(true);
+                    setMacaroonEnabledState(true);
+                    setCaCertificateEnabledState(false);
+                    setCertificateEnabledState(false);
+                    setKeyEnabledState(false);
+                  } else if (selectOptions?.value == "1") {
+                    setTlsEnabledState(false);
+                    setMacaroonEnabledState(false);
+                    setCaCertificateEnabledState(true);
+                    setCertificateEnabledState(true);
+                    setKeyEnabledState(true);
+                  }
+                  setNodeConfigurationState({ ...nodeConfigurationState, implementation: selectOptions?.value as number });
                 }}
                 options={implementationOptions}
                 value={implementationOptions.find((io) => io.value == "" + nodeConfigurationState.implementation)}
@@ -545,22 +617,57 @@ const NodeSettings = React.forwardRef(function NodeSettings(
                   errors={formErrorState}
                 />
               </span>
-              <span id="tls">
-                <File
-                  intercomTarget={"node-setting-input-tls"}
-                  label={t.tlsCertificate}
-                  onFileChange={handleTLSFileChange}
-                  fileName={nodeConfigurationState?.tlsFileName}
-                />
-              </span>
-              <span id="macaroon">
-                <File
-                  intercomTarget={"node-setting-input-macaroon"}
-                  label={t.macaroon}
-                  onFileChange={handleMacaroonFileChange}
-                  fileName={nodeConfigurationState?.macaroonFileName}
-                />
-              </span>
+              {tlsEnabledState && (
+                <span id="tls">
+                  <File
+                    intercomTarget={"node-setting-input-tls"}
+                    label={t.tlsCertificate}
+                    onFileChange={handleTLSFileChange}
+                    fileName={nodeConfigurationState?.tlsFileName}
+
+                  />
+                </span>
+              )}
+              {macaroonEnabledState && (
+                <span id="macaroon">
+                  <File
+                    intercomTarget={"node-setting-input-macaroon"}
+                    label={t.macaroon}
+                    onFileChange={handleMacaroonFileChange}
+                    fileName={nodeConfigurationState?.macaroonFileName}
+                  />
+                </span>
+              )}
+              {caCertificateEnabledState && (
+                <span id="caCertificate">
+                  <File
+                    intercomTarget={"node-setting-input-ca"}
+                    label={t.caCertificate}
+                    onFileChange={handleCaCertificateFileChange}
+                    fileName={nodeConfigurationState?.caCertificateFileName}
+                  />
+                </span>
+              )}
+              {certificateEnabledState && (
+                <span id="certificate">
+                  <File
+                    intercomTarget={"node-setting-input-client"}
+                    label={t.certificate}
+                    onFileChange={handleCertificateFileChange}
+                    fileName={nodeConfigurationState?.certificateFileName}
+                  />
+                </span>
+              )}
+              {keyEnabledState && (
+                <span id="key">
+                  <File
+                    intercomTarget={"node-setting-input-clientKey"}
+                    label={t.key}
+                    onFileChange={handleKeyFileChange}
+                    fileName={nodeConfigurationState?.keyFileName}
+                  />
+                </span>
+              )}
               <span id="nodeStartDate">
                 <Input
                   intercomTarget={"node-setting-input-nodeStartDate"}

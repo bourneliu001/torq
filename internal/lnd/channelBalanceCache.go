@@ -150,7 +150,7 @@ func initializeChannelBalanceFromLnd(lndClient lnrpc.LightningClient, nodeId int
 			FeePerKw:              lndChannel.FeePerKw,
 			NumUpdates:            lndChannel.NumUpdates,
 			ChanStatusFlags:       lndChannel.ChanStatusFlags,
-			CommitmentType:        lndChannel.CommitmentType,
+			CommitmentType:        core.GetCommitmentTypeForLnd(int(lndChannel.CommitmentType)),
 			Lifetime:              lndChannel.Lifetime,
 			TotalSatoshisSent:     lndChannel.TotalSatoshisSent,
 			TotalSatoshisReceived: lndChannel.TotalSatoshisReceived,

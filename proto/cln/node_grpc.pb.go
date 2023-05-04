@@ -19,53 +19,59 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Node_Getinfo_FullMethodName           = "/cln.Node/Getinfo"
-	Node_ListPeers_FullMethodName         = "/cln.Node/ListPeers"
-	Node_ListFunds_FullMethodName         = "/cln.Node/ListFunds"
-	Node_SendPay_FullMethodName           = "/cln.Node/SendPay"
-	Node_ListChannels_FullMethodName      = "/cln.Node/ListChannels"
-	Node_AddGossip_FullMethodName         = "/cln.Node/AddGossip"
-	Node_AutoCleanInvoice_FullMethodName  = "/cln.Node/AutoCleanInvoice"
-	Node_CheckMessage_FullMethodName      = "/cln.Node/CheckMessage"
-	Node_Close_FullMethodName             = "/cln.Node/Close"
-	Node_ConnectPeer_FullMethodName       = "/cln.Node/ConnectPeer"
-	Node_CreateInvoice_FullMethodName     = "/cln.Node/CreateInvoice"
-	Node_Datastore_FullMethodName         = "/cln.Node/Datastore"
-	Node_CreateOnion_FullMethodName       = "/cln.Node/CreateOnion"
-	Node_DelDatastore_FullMethodName      = "/cln.Node/DelDatastore"
-	Node_DelExpiredInvoice_FullMethodName = "/cln.Node/DelExpiredInvoice"
-	Node_DelInvoice_FullMethodName        = "/cln.Node/DelInvoice"
-	Node_Invoice_FullMethodName           = "/cln.Node/Invoice"
-	Node_ListDatastore_FullMethodName     = "/cln.Node/ListDatastore"
-	Node_ListInvoices_FullMethodName      = "/cln.Node/ListInvoices"
-	Node_SendOnion_FullMethodName         = "/cln.Node/SendOnion"
-	Node_ListSendPays_FullMethodName      = "/cln.Node/ListSendPays"
-	Node_ListTransactions_FullMethodName  = "/cln.Node/ListTransactions"
-	Node_Pay_FullMethodName               = "/cln.Node/Pay"
-	Node_ListNodes_FullMethodName         = "/cln.Node/ListNodes"
-	Node_WaitAnyInvoice_FullMethodName    = "/cln.Node/WaitAnyInvoice"
-	Node_WaitInvoice_FullMethodName       = "/cln.Node/WaitInvoice"
-	Node_WaitSendPay_FullMethodName       = "/cln.Node/WaitSendPay"
-	Node_NewAddr_FullMethodName           = "/cln.Node/NewAddr"
-	Node_Withdraw_FullMethodName          = "/cln.Node/Withdraw"
-	Node_KeySend_FullMethodName           = "/cln.Node/KeySend"
-	Node_FundPsbt_FullMethodName          = "/cln.Node/FundPsbt"
-	Node_SendPsbt_FullMethodName          = "/cln.Node/SendPsbt"
-	Node_SignPsbt_FullMethodName          = "/cln.Node/SignPsbt"
-	Node_UtxoPsbt_FullMethodName          = "/cln.Node/UtxoPsbt"
-	Node_TxDiscard_FullMethodName         = "/cln.Node/TxDiscard"
-	Node_TxPrepare_FullMethodName         = "/cln.Node/TxPrepare"
-	Node_TxSend_FullMethodName            = "/cln.Node/TxSend"
-	Node_Disconnect_FullMethodName        = "/cln.Node/Disconnect"
-	Node_Feerates_FullMethodName          = "/cln.Node/Feerates"
-	Node_FundChannel_FullMethodName       = "/cln.Node/FundChannel"
-	Node_GetRoute_FullMethodName          = "/cln.Node/GetRoute"
-	Node_ListForwards_FullMethodName      = "/cln.Node/ListForwards"
-	Node_ListPays_FullMethodName          = "/cln.Node/ListPays"
-	Node_Ping_FullMethodName              = "/cln.Node/Ping"
-	Node_SetChannel_FullMethodName        = "/cln.Node/SetChannel"
-	Node_SignMessage_FullMethodName       = "/cln.Node/SignMessage"
-	Node_Stop_FullMethodName              = "/cln.Node/Stop"
+	Node_Getinfo_FullMethodName            = "/cln.Node/Getinfo"
+	Node_ListPeers_FullMethodName          = "/cln.Node/ListPeers"
+	Node_ListPeerChannels_FullMethodName   = "/cln.Node/ListPeerChannels"
+	Node_ListFunds_FullMethodName          = "/cln.Node/ListFunds"
+	Node_SendPay_FullMethodName            = "/cln.Node/SendPay"
+	Node_ListChannels_FullMethodName       = "/cln.Node/ListChannels"
+	Node_ListClosedChannels_FullMethodName = "/cln.Node/ListClosedChannels"
+	Node_AddGossip_FullMethodName          = "/cln.Node/AddGossip"
+	Node_AutoCleanInvoice_FullMethodName   = "/cln.Node/AutoCleanInvoice"
+	Node_CheckMessage_FullMethodName       = "/cln.Node/CheckMessage"
+	Node_Close_FullMethodName              = "/cln.Node/Close"
+	Node_ConnectPeer_FullMethodName        = "/cln.Node/ConnectPeer"
+	Node_CreateInvoice_FullMethodName      = "/cln.Node/CreateInvoice"
+	Node_Datastore_FullMethodName          = "/cln.Node/Datastore"
+	Node_CreateOnion_FullMethodName        = "/cln.Node/CreateOnion"
+	Node_DelDatastore_FullMethodName       = "/cln.Node/DelDatastore"
+	Node_DelExpiredInvoice_FullMethodName  = "/cln.Node/DelExpiredInvoice"
+	Node_DelInvoice_FullMethodName         = "/cln.Node/DelInvoice"
+	Node_Invoice_FullMethodName            = "/cln.Node/Invoice"
+	Node_ListDatastore_FullMethodName      = "/cln.Node/ListDatastore"
+	Node_ListInvoices_FullMethodName       = "/cln.Node/ListInvoices"
+	Node_SendOnion_FullMethodName          = "/cln.Node/SendOnion"
+	Node_ListSendPays_FullMethodName       = "/cln.Node/ListSendPays"
+	Node_ListTransactions_FullMethodName   = "/cln.Node/ListTransactions"
+	Node_Pay_FullMethodName                = "/cln.Node/Pay"
+	Node_ListNodes_FullMethodName          = "/cln.Node/ListNodes"
+	Node_WaitAnyInvoice_FullMethodName     = "/cln.Node/WaitAnyInvoice"
+	Node_WaitInvoice_FullMethodName        = "/cln.Node/WaitInvoice"
+	Node_WaitSendPay_FullMethodName        = "/cln.Node/WaitSendPay"
+	Node_NewAddr_FullMethodName            = "/cln.Node/NewAddr"
+	Node_Withdraw_FullMethodName           = "/cln.Node/Withdraw"
+	Node_KeySend_FullMethodName            = "/cln.Node/KeySend"
+	Node_FundPsbt_FullMethodName           = "/cln.Node/FundPsbt"
+	Node_SendPsbt_FullMethodName           = "/cln.Node/SendPsbt"
+	Node_SignPsbt_FullMethodName           = "/cln.Node/SignPsbt"
+	Node_UtxoPsbt_FullMethodName           = "/cln.Node/UtxoPsbt"
+	Node_TxDiscard_FullMethodName          = "/cln.Node/TxDiscard"
+	Node_TxPrepare_FullMethodName          = "/cln.Node/TxPrepare"
+	Node_TxSend_FullMethodName             = "/cln.Node/TxSend"
+	Node_Decode_FullMethodName             = "/cln.Node/Decode"
+	Node_DecodePay_FullMethodName          = "/cln.Node/DecodePay"
+	Node_Disconnect_FullMethodName         = "/cln.Node/Disconnect"
+	Node_Feerates_FullMethodName           = "/cln.Node/Feerates"
+	Node_FundChannel_FullMethodName        = "/cln.Node/FundChannel"
+	Node_GetRoute_FullMethodName           = "/cln.Node/GetRoute"
+	Node_ListForwards_FullMethodName       = "/cln.Node/ListForwards"
+	Node_ListPays_FullMethodName           = "/cln.Node/ListPays"
+	Node_Ping_FullMethodName               = "/cln.Node/Ping"
+	Node_SendCustomMsg_FullMethodName      = "/cln.Node/SendCustomMsg"
+	Node_SetChannel_FullMethodName         = "/cln.Node/SetChannel"
+	Node_SignInvoice_FullMethodName        = "/cln.Node/SignInvoice"
+	Node_SignMessage_FullMethodName        = "/cln.Node/SignMessage"
+	Node_Stop_FullMethodName               = "/cln.Node/Stop"
 )
 
 // NodeClient is the client API for Node service.
@@ -74,9 +80,11 @@ const (
 type NodeClient interface {
 	Getinfo(ctx context.Context, in *GetinfoRequest, opts ...grpc.CallOption) (*GetinfoResponse, error)
 	ListPeers(ctx context.Context, in *ListpeersRequest, opts ...grpc.CallOption) (*ListpeersResponse, error)
+	ListPeerChannels(ctx context.Context, in *ListpeerchannelsRequest, opts ...grpc.CallOption) (*ListpeerchannelsResponse, error)
 	ListFunds(ctx context.Context, in *ListfundsRequest, opts ...grpc.CallOption) (*ListfundsResponse, error)
 	SendPay(ctx context.Context, in *SendpayRequest, opts ...grpc.CallOption) (*SendpayResponse, error)
 	ListChannels(ctx context.Context, in *ListchannelsRequest, opts ...grpc.CallOption) (*ListchannelsResponse, error)
+	ListClosedChannels(ctx context.Context, in *ListclosedchannelsRequest, opts ...grpc.CallOption) (*ListclosedchannelsResponse, error)
 	AddGossip(ctx context.Context, in *AddgossipRequest, opts ...grpc.CallOption) (*AddgossipResponse, error)
 	AutoCleanInvoice(ctx context.Context, in *AutocleaninvoiceRequest, opts ...grpc.CallOption) (*AutocleaninvoiceResponse, error)
 	CheckMessage(ctx context.Context, in *CheckmessageRequest, opts ...grpc.CallOption) (*CheckmessageResponse, error)
@@ -109,6 +117,8 @@ type NodeClient interface {
 	TxDiscard(ctx context.Context, in *TxdiscardRequest, opts ...grpc.CallOption) (*TxdiscardResponse, error)
 	TxPrepare(ctx context.Context, in *TxprepareRequest, opts ...grpc.CallOption) (*TxprepareResponse, error)
 	TxSend(ctx context.Context, in *TxsendRequest, opts ...grpc.CallOption) (*TxsendResponse, error)
+	Decode(ctx context.Context, in *DecodeRequest, opts ...grpc.CallOption) (*DecodeResponse, error)
+	DecodePay(ctx context.Context, in *DecodepayRequest, opts ...grpc.CallOption) (*DecodepayResponse, error)
 	Disconnect(ctx context.Context, in *DisconnectRequest, opts ...grpc.CallOption) (*DisconnectResponse, error)
 	Feerates(ctx context.Context, in *FeeratesRequest, opts ...grpc.CallOption) (*FeeratesResponse, error)
 	FundChannel(ctx context.Context, in *FundchannelRequest, opts ...grpc.CallOption) (*FundchannelResponse, error)
@@ -116,7 +126,9 @@ type NodeClient interface {
 	ListForwards(ctx context.Context, in *ListforwardsRequest, opts ...grpc.CallOption) (*ListforwardsResponse, error)
 	ListPays(ctx context.Context, in *ListpaysRequest, opts ...grpc.CallOption) (*ListpaysResponse, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	SendCustomMsg(ctx context.Context, in *SendcustommsgRequest, opts ...grpc.CallOption) (*SendcustommsgResponse, error)
 	SetChannel(ctx context.Context, in *SetchannelRequest, opts ...grpc.CallOption) (*SetchannelResponse, error)
+	SignInvoice(ctx context.Context, in *SigninvoiceRequest, opts ...grpc.CallOption) (*SigninvoiceResponse, error)
 	SignMessage(ctx context.Context, in *SignmessageRequest, opts ...grpc.CallOption) (*SignmessageResponse, error)
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 }
@@ -147,6 +159,15 @@ func (c *nodeClient) ListPeers(ctx context.Context, in *ListpeersRequest, opts .
 	return out, nil
 }
 
+func (c *nodeClient) ListPeerChannels(ctx context.Context, in *ListpeerchannelsRequest, opts ...grpc.CallOption) (*ListpeerchannelsResponse, error) {
+	out := new(ListpeerchannelsResponse)
+	err := c.cc.Invoke(ctx, Node_ListPeerChannels_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *nodeClient) ListFunds(ctx context.Context, in *ListfundsRequest, opts ...grpc.CallOption) (*ListfundsResponse, error) {
 	out := new(ListfundsResponse)
 	err := c.cc.Invoke(ctx, Node_ListFunds_FullMethodName, in, out, opts...)
@@ -168,6 +189,15 @@ func (c *nodeClient) SendPay(ctx context.Context, in *SendpayRequest, opts ...gr
 func (c *nodeClient) ListChannels(ctx context.Context, in *ListchannelsRequest, opts ...grpc.CallOption) (*ListchannelsResponse, error) {
 	out := new(ListchannelsResponse)
 	err := c.cc.Invoke(ctx, Node_ListChannels_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeClient) ListClosedChannels(ctx context.Context, in *ListclosedchannelsRequest, opts ...grpc.CallOption) (*ListclosedchannelsResponse, error) {
+	out := new(ListclosedchannelsResponse)
+	err := c.cc.Invoke(ctx, Node_ListClosedChannels_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -462,6 +492,24 @@ func (c *nodeClient) TxSend(ctx context.Context, in *TxsendRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *nodeClient) Decode(ctx context.Context, in *DecodeRequest, opts ...grpc.CallOption) (*DecodeResponse, error) {
+	out := new(DecodeResponse)
+	err := c.cc.Invoke(ctx, Node_Decode_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeClient) DecodePay(ctx context.Context, in *DecodepayRequest, opts ...grpc.CallOption) (*DecodepayResponse, error) {
+	out := new(DecodepayResponse)
+	err := c.cc.Invoke(ctx, Node_DecodePay_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *nodeClient) Disconnect(ctx context.Context, in *DisconnectRequest, opts ...grpc.CallOption) (*DisconnectResponse, error) {
 	out := new(DisconnectResponse)
 	err := c.cc.Invoke(ctx, Node_Disconnect_FullMethodName, in, out, opts...)
@@ -525,9 +573,27 @@ func (c *nodeClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *nodeClient) SendCustomMsg(ctx context.Context, in *SendcustommsgRequest, opts ...grpc.CallOption) (*SendcustommsgResponse, error) {
+	out := new(SendcustommsgResponse)
+	err := c.cc.Invoke(ctx, Node_SendCustomMsg_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *nodeClient) SetChannel(ctx context.Context, in *SetchannelRequest, opts ...grpc.CallOption) (*SetchannelResponse, error) {
 	out := new(SetchannelResponse)
 	err := c.cc.Invoke(ctx, Node_SetChannel_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeClient) SignInvoice(ctx context.Context, in *SigninvoiceRequest, opts ...grpc.CallOption) (*SigninvoiceResponse, error) {
+	out := new(SigninvoiceResponse)
+	err := c.cc.Invoke(ctx, Node_SignInvoice_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -558,9 +624,11 @@ func (c *nodeClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.Cal
 type NodeServer interface {
 	Getinfo(context.Context, *GetinfoRequest) (*GetinfoResponse, error)
 	ListPeers(context.Context, *ListpeersRequest) (*ListpeersResponse, error)
+	ListPeerChannels(context.Context, *ListpeerchannelsRequest) (*ListpeerchannelsResponse, error)
 	ListFunds(context.Context, *ListfundsRequest) (*ListfundsResponse, error)
 	SendPay(context.Context, *SendpayRequest) (*SendpayResponse, error)
 	ListChannels(context.Context, *ListchannelsRequest) (*ListchannelsResponse, error)
+	ListClosedChannels(context.Context, *ListclosedchannelsRequest) (*ListclosedchannelsResponse, error)
 	AddGossip(context.Context, *AddgossipRequest) (*AddgossipResponse, error)
 	AutoCleanInvoice(context.Context, *AutocleaninvoiceRequest) (*AutocleaninvoiceResponse, error)
 	CheckMessage(context.Context, *CheckmessageRequest) (*CheckmessageResponse, error)
@@ -593,6 +661,8 @@ type NodeServer interface {
 	TxDiscard(context.Context, *TxdiscardRequest) (*TxdiscardResponse, error)
 	TxPrepare(context.Context, *TxprepareRequest) (*TxprepareResponse, error)
 	TxSend(context.Context, *TxsendRequest) (*TxsendResponse, error)
+	Decode(context.Context, *DecodeRequest) (*DecodeResponse, error)
+	DecodePay(context.Context, *DecodepayRequest) (*DecodepayResponse, error)
 	Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error)
 	Feerates(context.Context, *FeeratesRequest) (*FeeratesResponse, error)
 	FundChannel(context.Context, *FundchannelRequest) (*FundchannelResponse, error)
@@ -600,7 +670,9 @@ type NodeServer interface {
 	ListForwards(context.Context, *ListforwardsRequest) (*ListforwardsResponse, error)
 	ListPays(context.Context, *ListpaysRequest) (*ListpaysResponse, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	SendCustomMsg(context.Context, *SendcustommsgRequest) (*SendcustommsgResponse, error)
 	SetChannel(context.Context, *SetchannelRequest) (*SetchannelResponse, error)
+	SignInvoice(context.Context, *SigninvoiceRequest) (*SigninvoiceResponse, error)
 	SignMessage(context.Context, *SignmessageRequest) (*SignmessageResponse, error)
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	mustEmbedUnimplementedNodeServer()
@@ -616,6 +688,9 @@ func (UnimplementedNodeServer) Getinfo(context.Context, *GetinfoRequest) (*Getin
 func (UnimplementedNodeServer) ListPeers(context.Context, *ListpeersRequest) (*ListpeersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPeers not implemented")
 }
+func (UnimplementedNodeServer) ListPeerChannels(context.Context, *ListpeerchannelsRequest) (*ListpeerchannelsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPeerChannels not implemented")
+}
 func (UnimplementedNodeServer) ListFunds(context.Context, *ListfundsRequest) (*ListfundsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListFunds not implemented")
 }
@@ -624,6 +699,9 @@ func (UnimplementedNodeServer) SendPay(context.Context, *SendpayRequest) (*Sendp
 }
 func (UnimplementedNodeServer) ListChannels(context.Context, *ListchannelsRequest) (*ListchannelsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListChannels not implemented")
+}
+func (UnimplementedNodeServer) ListClosedChannels(context.Context, *ListclosedchannelsRequest) (*ListclosedchannelsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListClosedChannels not implemented")
 }
 func (UnimplementedNodeServer) AddGossip(context.Context, *AddgossipRequest) (*AddgossipResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddGossip not implemented")
@@ -721,6 +799,12 @@ func (UnimplementedNodeServer) TxPrepare(context.Context, *TxprepareRequest) (*T
 func (UnimplementedNodeServer) TxSend(context.Context, *TxsendRequest) (*TxsendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TxSend not implemented")
 }
+func (UnimplementedNodeServer) Decode(context.Context, *DecodeRequest) (*DecodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Decode not implemented")
+}
+func (UnimplementedNodeServer) DecodePay(context.Context, *DecodepayRequest) (*DecodepayResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DecodePay not implemented")
+}
 func (UnimplementedNodeServer) Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Disconnect not implemented")
 }
@@ -742,8 +826,14 @@ func (UnimplementedNodeServer) ListPays(context.Context, *ListpaysRequest) (*Lis
 func (UnimplementedNodeServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
+func (UnimplementedNodeServer) SendCustomMsg(context.Context, *SendcustommsgRequest) (*SendcustommsgResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendCustomMsg not implemented")
+}
 func (UnimplementedNodeServer) SetChannel(context.Context, *SetchannelRequest) (*SetchannelResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetChannel not implemented")
+}
+func (UnimplementedNodeServer) SignInvoice(context.Context, *SigninvoiceRequest) (*SigninvoiceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignInvoice not implemented")
 }
 func (UnimplementedNodeServer) SignMessage(context.Context, *SignmessageRequest) (*SignmessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignMessage not implemented")
@@ -800,6 +890,24 @@ func _Node_ListPeers_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Node_ListPeerChannels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListpeerchannelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).ListPeerChannels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_ListPeerChannels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).ListPeerChannels(ctx, req.(*ListpeerchannelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Node_ListFunds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListfundsRequest)
 	if err := dec(in); err != nil {
@@ -850,6 +958,24 @@ func _Node_ListChannels_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NodeServer).ListChannels(ctx, req.(*ListchannelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Node_ListClosedChannels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListclosedchannelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).ListClosedChannels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_ListClosedChannels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).ListClosedChannels(ctx, req.(*ListclosedchannelsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1430,6 +1556,42 @@ func _Node_TxSend_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Node_Decode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).Decode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_Decode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).Decode(ctx, req.(*DecodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Node_DecodePay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecodepayRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).DecodePay(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_DecodePay_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).DecodePay(ctx, req.(*DecodepayRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Node_Disconnect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DisconnectRequest)
 	if err := dec(in); err != nil {
@@ -1556,6 +1718,24 @@ func _Node_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Node_SendCustomMsg_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendcustommsgRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).SendCustomMsg(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_SendCustomMsg_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).SendCustomMsg(ctx, req.(*SendcustommsgRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Node_SetChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetchannelRequest)
 	if err := dec(in); err != nil {
@@ -1570,6 +1750,24 @@ func _Node_SetChannel_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NodeServer).SetChannel(ctx, req.(*SetchannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Node_SignInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SigninvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).SignInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Node_SignInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).SignInvoice(ctx, req.(*SigninvoiceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1626,6 +1824,10 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_ListPeers_Handler,
 		},
 		{
+			MethodName: "ListPeerChannels",
+			Handler:    _Node_ListPeerChannels_Handler,
+		},
+		{
 			MethodName: "ListFunds",
 			Handler:    _Node_ListFunds_Handler,
 		},
@@ -1636,6 +1838,10 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListChannels",
 			Handler:    _Node_ListChannels_Handler,
+		},
+		{
+			MethodName: "ListClosedChannels",
+			Handler:    _Node_ListClosedChannels_Handler,
 		},
 		{
 			MethodName: "AddGossip",
@@ -1766,6 +1972,14 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_TxSend_Handler,
 		},
 		{
+			MethodName: "Decode",
+			Handler:    _Node_Decode_Handler,
+		},
+		{
+			MethodName: "DecodePay",
+			Handler:    _Node_DecodePay_Handler,
+		},
+		{
 			MethodName: "Disconnect",
 			Handler:    _Node_Disconnect_Handler,
 		},
@@ -1794,8 +2008,16 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_Ping_Handler,
 		},
 		{
+			MethodName: "SendCustomMsg",
+			Handler:    _Node_SendCustomMsg_Handler,
+		},
+		{
 			MethodName: "SetChannel",
 			Handler:    _Node_SetChannel_Handler,
+		},
+		{
+			MethodName: "SignInvoice",
+			Handler:    _Node_SignInvoice_Handler,
 		},
 		{
 			MethodName: "SignMessage",

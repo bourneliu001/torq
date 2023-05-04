@@ -7,8 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	"github.com/lncapital/torq/proto/lnrpc"
-
 	"github.com/lncapital/torq/internal/core"
 )
 
@@ -154,19 +152,21 @@ type ChannelStateSettingsCache struct {
 	PendingOutgoingHtlcCount  int   `json:"pendingOutgoingHtlcCount"`
 	PendingOutgoingHtlcAmount int64 `json:"pendingOutgoingHtlcAmount"`
 
+	// Aggregated information
+	PeerChannelCount    int   `json:"peerChannelCount"`
+	PeerChannelCapacity int64 `json:"peerChannelCapacity"`
+	PeerLocalBalance    int64 `json:"peerRemoteBalance"`
+
 	// STALE INFORMATION ONLY OBTAINED VIA LND REGULAR CHECKINS SO NOT MAINTAINED
-	CommitFee             int64                `json:"commitFee"`
-	CommitWeight          int64                `json:"commitWeight"`
-	FeePerKw              int64                `json:"feePerKw"`
-	NumUpdates            uint64               `json:"numUpdates"`
-	ChanStatusFlags       string               `json:"chanStatusFlags"`
-	CommitmentType        lnrpc.CommitmentType `json:"commitmentType"`
-	Lifetime              int64                `json:"lifetime"`
-	TotalSatoshisReceived int64                `json:"totalSatoshisReceived"`
-	TotalSatoshisSent     int64                `json:"totalSatoshisSent"`
-	PeerChannelCount      int                  `json:"peerChannelCount"`
-	PeerChannelCapacity   int64                `json:"peerChannelCapacity"`
-	PeerLocalBalance      int64                `json:"peerRemoteBalance"`
+	CommitFee             int64               `json:"commitFee"`
+	CommitWeight          int64               `json:"commitWeight"`
+	FeePerKw              int64               `json:"feePerKw"`
+	NumUpdates            uint64              `json:"numUpdates"`
+	ChanStatusFlags       string              `json:"chanStatusFlags"`
+	CommitmentType        core.CommitmentType `json:"commitmentType"`
+	Lifetime              int64               `json:"lifetime"`
+	TotalSatoshisReceived int64               `json:"totalSatoshisReceived"`
+	TotalSatoshisSent     int64               `json:"totalSatoshisSent"`
 }
 
 type ChannelBalanceStateSettingsCache struct {

@@ -984,10 +984,15 @@ func ActivateLndService(ctx context.Context,
 				relavantServiceTypes = append(relavantServiceTypes, serviceType)
 			}
 		case services_helpers.LndServiceTransactionStream,
+			services_helpers.ClnServiceTransactionsService,
 			services_helpers.LndServiceHtlcEventStream,
+			services_helpers.ClnServiceHtlcsService,
 			services_helpers.LndServiceForwardsService,
+			services_helpers.ClnServiceForwardsService,
 			services_helpers.LndServiceInvoiceStream,
-			services_helpers.LndServicePaymentsService:
+			services_helpers.ClnServiceInvoicesService,
+			services_helpers.LndServicePaymentsService,
+			services_helpers.ClnServicePaymentsService:
 			active := false
 			for _, cs := range serviceType.GetNodeConnectionDetailCustomSettings() {
 				if customSettings&cs != 0 {
