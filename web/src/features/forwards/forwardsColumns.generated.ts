@@ -8,7 +8,7 @@ import { Forward } from "features/forwards/forwardsTypes";
 
 export const AllForwardsColumns: ColumnMetaData<Forward>[] = [
 	{
-		heading: "Name",
+		heading: "Peer Alias",
 		type: "AliasCell",
 		key: "alias",
 		valueType: "string",

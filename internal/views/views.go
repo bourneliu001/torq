@@ -1015,7 +1015,7 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 		{
 			key:        "alias",
 			locked:     true,
-			heading:    "Name",
+			heading:    "Peer Alias",
 			visualType: "AliasCell",
 			valueType:  "string",
 			pages: map[TableViewPage]int{
