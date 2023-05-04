@@ -32,13 +32,11 @@ export function useGroupBy<T extends AnyObject>(data: Array<T>, by: GroupByOptio
     const pubKey = String(chan["pubKey" as keyof T]);
     const torqNodeId = String(chan["torqNodeId" as keyof T]);
 
-    console.log(torqNodeId);
     const summedChan = summedPubKey.find(
       (sc) => sc["pubKey" as keyof typeof sc] == pubKey && sc["torqNodeId" as keyof typeof sc] == torqNodeId
     );
     if (!summedChan) {
       summedPubKey.push(chan);
-      console.log("pushing");
       continue;
     }
 
@@ -49,10 +47,8 @@ export function useGroupBy<T extends AnyObject>(data: Array<T>, by: GroupByOptio
         continue;
       }
 
-      console.log(key);
       // Values fround in arrayAggKeys should be converted to an array of values
       if (arrayAggKeys.includes(key)) {
-        console.log("it's considered an array");
         let valueArr = [];
         if (Array.isArray(value)) {
           valueArr = [...value];

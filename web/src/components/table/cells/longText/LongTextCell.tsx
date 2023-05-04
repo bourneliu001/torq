@@ -22,7 +22,6 @@ const LongTextCell = (props: TextCellProps) => {
     copyToClipboard(props.copyText || "");
     toastRef?.current?.addToast("Copied to clipboard", toastCategory.success);
   };
-  console.log(props.text);
   const textArray = Array.isArray(props.text) ? props.text : [props.text];
   return (
     <div
