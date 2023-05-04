@@ -87,14 +87,9 @@ func storeTransactions(db *sqlx.DB,
 	clnTransactions []*cln.ListtransactionsTransactions,
 	nodeSettings cache.NodeSettingsCache) error {
 
-	var blockHeight int
-	err := db.Get(&blockHeight, `SELECT COALESCE(MAX(block_height), 0) FROM tx WHERE node_id=$1;`, nodeSettings.NodeId)
+	blockHeight, err := getMaximumBlockHeight(db, nodeSettings)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			blockHeight = 0
-		}
-		return errors.Wrapf(err, "obtaining maximum block height for transactions for nodeId: %v",
-			nodeSettings.NodeId)
+		return errors.Wrap(err, "store transactions")
 	}
 
 	for _, clnTransaction := range clnTransactions {
@@ -111,6 +106,18 @@ func storeTransactions(db *sqlx.DB,
 		}
 	}
 	return nil
+}
+
+func getMaximumBlockHeight(db *sqlx.DB, nodeSettings cache.NodeSettingsCache) (int, error) {
+	var blockHeight int
+	err := db.Get(&blockHeight, `SELECT COALESCE(MAX(block_height), 0) FROM tx WHERE node_id=$1;`, nodeSettings.NodeId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			blockHeight = 0
+		}
+		return 0, errors.Wrapf(err, "obtaining maximum block height for transactions for nodeId: %v", nodeSettings.NodeId)
+	}
+	return blockHeight, nil
 }
 
 func storeTransaction(db *sqlx.DB,
