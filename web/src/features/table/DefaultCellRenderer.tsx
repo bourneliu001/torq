@@ -37,9 +37,7 @@ export default function DefaultCellRenderer<T>(
             />
           );
         case "TextCell":
-          return (
-            <TextCell current={row[dataKey] as string} key={dataKey.toString() + rowIndex} totalCell={totalsRow} />
-          );
+          return <TextCell text={row[dataKey] as string} key={dataKey.toString() + rowIndex} totalCell={totalsRow} />;
         case "DurationCell":
           return (
             <DurationCell seconds={row[dataKey] as number} key={dataKey.toString() + rowIndex} totalCell={totalsRow} />
@@ -111,6 +109,6 @@ export default function DefaultCellRenderer<T>(
       }
   }
   return (
-    <TextCell current={row[dataKey] as string} key={dataKey.toString() + rowIndex} copyText={row[dataKey] as string} />
+    <TextCell text={row[dataKey] as string} key={dataKey.toString() + rowIndex} copyText={row[dataKey] as string} />
   );
 }

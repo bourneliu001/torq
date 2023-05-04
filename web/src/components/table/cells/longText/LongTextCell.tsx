@@ -8,7 +8,7 @@ import styles from "./long_text_cell.module.scss";
 import { toastCategory } from "features/toast/Toasts";
 
 export type TextCellProps = {
-  text: string;
+  text: string | Array<string>;
   link?: string;
   copyText?: string;
   className?: string;
@@ -22,6 +22,8 @@ const LongTextCell = (props: TextCellProps) => {
     copyToClipboard(props.copyText || "");
     toastRef?.current?.addToast("Copied to clipboard", toastCategory.success);
   };
+  console.log(props.text);
+  const textArray = Array.isArray(props.text) ? props.text : [props.text];
   return (
     <div
       className={classNames(
@@ -31,24 +33,28 @@ const LongTextCell = (props: TextCellProps) => {
         props.className
       )}
     >
-      {!props.totalCell && props.text && (
-        <div className={classNames(styles.action, styles.view)}>
-          <Eye16Regular />
-          <span className={classNames(styles.content)}>{props.text}</span>
+      {textArray.map((text, i) => (
+        <div key={i}>
+          {!props.totalCell && props.text && (
+            <div className={classNames(styles.action, styles.view)}>
+              <Eye16Regular />
+              <span className={classNames(styles.content)}>{text}</span>
+            </div>
+          )}
+          {!props.totalCell && props.copyText && (
+            <button className={classNames(styles.action, styles.copy)} onClick={copyText}>
+              <Copy16Regular />
+              Copy
+            </button>
+          )}
+          {!props.totalCell && props.link && (
+            <a href={props.link} className={classNames(styles.action, styles.link)} target="_blank" rel="noreferrer">
+              <Eye16Regular />
+              Link
+            </a>
+          )}
         </div>
-      )}
-      {!props.totalCell && props.copyText && (
-        <button className={classNames(styles.action, styles.copy)} onClick={copyText}>
-          <Copy16Regular />
-          Copy
-        </button>
-      )}
-      {!props.totalCell && props.link && (
-        <a href={props.link} className={classNames(styles.action, styles.link)} target="_blank" rel="noreferrer">
-          <Eye16Regular />
-          Link
-        </a>
-      )}
+      ))}
     </div>
   );
 };

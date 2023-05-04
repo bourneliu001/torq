@@ -37,7 +37,7 @@ export default function peerCellRenderer(
   }
 
   if (column.key === "connectionStatus") {
-    return <TextCell current={row.connectionStatus} key={column.key.toString() + rowIndex} totalCell={isTotalsRow} />;
+    return <TextCell text={row.connectionStatus} key={column.key.toString() + rowIndex} totalCell={isTotalsRow} />;
   }
 
   return DefaultCellRenderer(row, rowIndex, column, columnIndex, false, maxRow);
