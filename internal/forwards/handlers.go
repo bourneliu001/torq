@@ -56,6 +56,7 @@ type forwardsTableRow struct {
 	ChannelTags []tags.Tag  `json:"channelTags"`
 	PeerTags    []tags.Tag  `json:"peerTags"`
 	NodeId      int         `json:"nodeId"`
+	NodeName    string      `json:"nodeName"`
 	PeerId      int         `json:"peerId"`
 	// Database primary key of channel
 	ChannelID              *int   `json:"channelId"`
@@ -114,6 +115,7 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		select
 			coalesce(scne.node_alias, LEFT(scn.public_key, 20)) as alias,
 			coalesce(fw.node_id, 0) as node_id,
+			coalesce(ncd.name, '') as node_name,
 			case when c.first_node_id = fw.node_id then c.second_node_id else c.first_node_id end as peer_id,
 			coalesce(c.channel_id, 0) as channel_id,
 			coalesce(c.funding_transaction_hash, 'Funding transaction missing') as funding_transaction_hash,
@@ -192,6 +194,7 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 						when c.first_node_id = fw.node_id then c.second_node_id = scn.node_id
 						else c.first_node_id = scn.node_id
 					end
+		left join node_connection_details ncd on ncd.node_id = fw.node_id
 		where ( c.first_node_id = any($4) OR c.second_node_id = any($4) )
 `
 
@@ -206,6 +209,7 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		err = rows.Scan(
 			&c.Alias,
 			&c.NodeId,
+			&c.NodeName,
 			&c.PeerId,
 			&c.ChannelID,
 			&c.FundingTransactionHash,

@@ -30,4 +30,5 @@ export type Forward = {
   peerTags: Array<Tag>;
   peerId: number;
   nodeId: number;
+  nodeName: string;
 };
