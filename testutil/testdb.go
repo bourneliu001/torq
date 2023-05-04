@@ -22,8 +22,8 @@ import (
 const superuserName = "postgres"
 const testDbPort = 5433
 const testDBPrefix = "torq_test_"
-const TestPublicKey1 = "PublicKey1"
-const TestPublicKey2 = "PublicKey2"
+const TestPublicKey1 = "0326e692c411111111111111111111111111111111111111111111111111111111"
+const TestPublicKey2 = "0326e692c422222222222222222222222222222222222222222222222222222222"
 const TestFundingOutputIndex = 3
 const TestFundingTransactionHash1 = "0101010101010101010101010101010101010101010101010101010101010101"
 const TestChannelPoint1 = TestFundingTransactionHash1 + ":3"
@@ -244,9 +244,9 @@ func addNode(db *sqlx.DB, testPublicKey string, cancel context.CancelFunc) (int,
 		testPublicKey, core.Bitcoin, core.SigNet, time.Now().UTC()).Scan(&testNodeId)
 	if err != nil {
 		cancel()
-		return 0, errors.Wrapf(err, "Inserting default node for testing with publicKey: %v", TestPublicKey1)
+		return 0, errors.Wrapf(err, "Inserting default node for testing with publicKey: %v", testPublicKey)
 	}
-	log.Debug().Msgf("Added test node with publicKey: %v nodeId: %v", TestPublicKey1, testNodeId)
+	log.Debug().Msgf("Added test node with publicKey: %v nodeId: %v", testPublicKey, testNodeId)
 	return testNodeId, nil
 }
 

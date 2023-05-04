@@ -65,7 +65,7 @@ func TestListTransactions(t *testing.T) {
 
 	nodeId, nodeSettings := setup(err, db, cancel)
 
-	expected := getExpected(nodeId)
+	expected := getExpectedTransaction(nodeId)
 
 	clnTransaction := constructClnTransaction(expected)
 
@@ -119,7 +119,7 @@ func TestStoreTransaction(t *testing.T) {
 
 	nodeId, nodeSettings := setup(err, db, cancel)
 
-	expected := getExpected(nodeId)
+	expected := getExpectedTransaction(nodeId)
 
 	clnTransaction := constructClnTransaction(expected)
 
@@ -148,30 +148,7 @@ func TestStoreTransaction(t *testing.T) {
 	}
 }
 
-func setup(err error, db *sqlx.DB, cancel context.CancelFunc) (int, cache.NodeSettingsCache) {
-	err = settings.InitializeSettingsCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Msgf("Problem initializing SettingsCache cache: %v", err)
-	}
-
-	err = settings.InitializeNodesCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Msgf("Problem initializing NodeCache cache: %v", err)
-	}
-
-	err = settings.InitializeChannelsCache(db)
-	if err != nil {
-		cancel()
-		log.Fatal().Err(err).Msgf("Problem initializing ChannelCache cache: %v", err)
-	}
-	nodeId := cache.GetChannelPeerNodeIdByPublicKey(testutil.TestPublicKey1, core.Bitcoin, core.SigNet)
-	nodeSettings := cache.GetNodeSettingsByNodeId(nodeId)
-	return nodeId, nodeSettings
-}
-
-func getExpected(nodeId int) Transaction {
+func getExpectedTransaction(nodeId int) Transaction {
 	expected := Transaction{
 		Amount:            100000,
 		TransactionHash:   "8673221e16aa288e34aacc85b7ce6389dab7467f645fe240470bff8d64c20169",
@@ -184,14 +161,6 @@ func getExpected(nodeId int) Transaction {
 		NodeId: nodeId,
 	}
 	return expected
-}
-
-func hexDecodeString(s string) []byte {
-	ba, err := hex.DecodeString(s)
-	if err != nil {
-		log.Fatal().Msgf("Unable to convert hex to byte. (%v)", err)
-	}
-	return ba
 }
 
 func constructClnTransaction(expected Transaction) cln.ListtransactionsTransactions {
@@ -220,4 +189,36 @@ func constructClnTransaction(expected Transaction) cln.ListtransactionsTransacti
 			},
 		},
 	}
+}
+
+// Some common functions for tests
+func setup(err error, db *sqlx.DB, cancel context.CancelFunc) (int, cache.NodeSettingsCache) {
+	err = settings.InitializeSettingsCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Msgf("Problem initializing SettingsCache cache: %v", err)
+	}
+
+	err = settings.InitializeNodesCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Msgf("Problem initializing NodeCache cache: %v", err)
+	}
+
+	err = settings.InitializeChannelsCache(db)
+	if err != nil {
+		cancel()
+		log.Fatal().Err(err).Msgf("Problem initializing ChannelCache cache: %v", err)
+	}
+	nodeId := cache.GetChannelPeerNodeIdByPublicKey(testutil.TestPublicKey1, core.Bitcoin, core.SigNet)
+	nodeSettings := cache.GetNodeSettingsByNodeId(nodeId)
+	return nodeId, nodeSettings
+}
+
+func hexDecodeString(s string) []byte {
+	ba, err := hex.DecodeString(s)
+	if err != nil {
+		log.Fatal().Msgf("Unable to convert hex to byte. (%v)", err)
+	}
+	return ba
 }
