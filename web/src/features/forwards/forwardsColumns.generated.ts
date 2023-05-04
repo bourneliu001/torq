@@ -140,6 +140,12 @@ export const AllForwardsColumns: ColumnMetaData<Forward>[] = [
 		key: "open",
 		valueType: "boolean",
 	},
+	{
+		heading: "Node Name",
+		type: "TextCell",
+		key: "nodeName",
+		valueType: "string",
+	},
 ];
 
 

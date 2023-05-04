@@ -1672,5 +1672,14 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 				PagePeers: 10,
 			},
 		},
+		{
+			key:        "nodeName",
+			heading:    "Node Name",
+			visualType: "TextCell",
+			valueType:  "string",
+			pages: map[TableViewPage]int{
+				PageForwards: 23,
+			},
+		},
 	}
 }
