@@ -87,14 +87,9 @@ func storeTransactions(db *sqlx.DB,
 	clnTransactions []*cln.ListtransactionsTransactions,
 	nodeSettings cache.NodeSettingsCache) error {
 
-	var blockHeight int
-	err := db.Get(&blockHeight, `SELECT COALESCE(MAX(block_height), 0) FROM tx WHERE node_id=$1;`, nodeSettings.NodeId)
+	blockHeight, err := getMaximumBlockHeight(db, nodeSettings)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			blockHeight = 0
-		}
-		return errors.Wrapf(err, "obtaining maximum block height for transactions for nodeId: %v",
-			nodeSettings.NodeId)
+		return errors.Wrap(err, "store transactions")
 	}
 
 	for _, clnTransaction := range clnTransactions {
@@ -111,6 +106,18 @@ func storeTransactions(db *sqlx.DB,
 		}
 	}
 	return nil
+}
+
+func getMaximumBlockHeight(db *sqlx.DB, nodeSettings cache.NodeSettingsCache) (int, error) {
+	var blockHeight int
+	err := db.Get(&blockHeight, `SELECT COALESCE(MAX(block_height), 0) FROM tx WHERE node_id=$1;`, nodeSettings.NodeId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			blockHeight = 0
+		}
+		return 0, errors.Wrapf(err, "obtaining maximum block height for transactions for nodeId: %v", nodeSettings.NodeId)
+	}
+	return blockHeight, nil
 }
 
 func storeTransaction(db *sqlx.DB,
@@ -130,10 +137,12 @@ func storeTransaction(db *sqlx.DB,
 
 	flags := 0
 	transactionTime := time.Now().UTC()
-	vectorData := vector.GetTransactionDetailsFromVector(hex.EncodeToString(clnTransaction.Hash), nodeSettings)
-	if vectorData.BlockHeight != 0 {
-		transactionTime = vectorData.BlockTimestamp
-		flags = int(core.TransactionTime)
+	if vector.IsVectorAvailable(nodeSettings) {
+		vectorData := vector.GetTransactionDetailsFromVector(hex.EncodeToString(clnTransaction.Hash), nodeSettings)
+		if vectorData.BlockHeight != 0 {
+			transactionTime = vectorData.BlockTimestamp
+			flags = int(core.TransactionTime)
+		}
 	}
 	_, err := db.Exec(`INSERT INTO tx
     					(timestamp, tx_hash, amount, block_height, dest_addresses, raw_tx_hex, node_id, flags)
@@ -141,7 +150,7 @@ func storeTransaction(db *sqlx.DB,
 					ON CONFLICT (timestamp, tx_hash) DO NOTHING;`,
 		transactionTime,
 		hex.EncodeToString(clnTransaction.Hash),
-		totalOutputsMsat/1000,
+		totalOutputsMsat,
 		&clnTransaction.Blockheight,
 		pq.Array(destinationAddresses),
 		hex.EncodeToString(clnTransaction.Rawtx),

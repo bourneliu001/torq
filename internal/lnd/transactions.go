@@ -19,17 +19,16 @@ import (
 )
 
 type Tx struct {
-	Timestamp             time.Time `json:"timestamp" db:"timestamp"`
-	TransactionHash       *string   `json:"transactionHash" db:"tx_hash"`
-	Amount                *int64    `json:"amount" db:"amount"`
-	NumberOfConfirmations *int32    `json:"numberOfConfirmations" db:"num_confirmations"`
-	BlockHash             *string   `json:"blockHash" db:"block_hash"`
-	BlockHeight           *uint32   `json:"blockHeight" db:"block_height"`
-	TotalFees             *int64    `json:"totalFees" db:"total_fees"`
-	DestinationAddresses  *[]string `json:"destinationAddresses" db:"dest_addresses"`
-	RawTransactionHex     *string   `json:"rawTransactionHex" db:"raw_tx_hex"`
-	Label                 *string   `json:"label" db:"label"`
-	NodeId                int       `json:"nodeId" db:"node_id"`
+	Timestamp            time.Time `json:"timestamp" db:"timestamp"`
+	TransactionHash      *string   `json:"transactionHash" db:"tx_hash"`
+	Amount               *int64    `json:"amount" db:"amount"`
+	BlockHash            *string   `json:"blockHash" db:"block_hash"`
+	BlockHeight          *uint32   `json:"blockHeight" db:"block_height"`
+	TotalFees            *int64    `json:"totalFees" db:"total_fees"`
+	DestinationAddresses *[]string `json:"destinationAddresses" db:"dest_addresses"`
+	RawTransactionHex    *string   `json:"rawTransactionHex" db:"raw_tx_hex"`
+	Label                *string   `json:"label" db:"label"`
+	NodeId               int       `json:"nodeId" db:"node_id"`
 }
 
 func fetchLastTxHeight(db *sqlx.DB, nodeId int) (txHeight uint32, err error) {
@@ -143,7 +142,6 @@ func SubscribeAndStoreTransactions(ctx context.Context,
 			//		Timestamp:             storedTx.Timestamp,
 			//		TransactionHash:       storedTx.TransactionHash,
 			//		Amount:                storedTx.Amount,
-			//		NumberOfConfirmations: storedTx.NumberOfConfirmations,
 			//		BlockHash:             storedTx.BlockHash,
 			//		BlockHeight:           storedTx.BlockHeight,
 			//		TotalFees:             storedTx.TotalFees,
@@ -176,29 +174,27 @@ func storeTransaction(db *sqlx.DB, tx *lnrpc.Transaction, nodeId int) (Tx, error
 	}
 	blockHeight := uint32(tx.BlockHeight)
 	storedTx := Tx{
-		Timestamp:             time.Unix(tx.TimeStamp, 0).UTC(),
-		TransactionHash:       &tx.TxHash,
-		Amount:                &tx.Amount,
-		NumberOfConfirmations: &tx.NumConfirmations,
-		BlockHash:             &tx.BlockHash,
-		BlockHeight:           &blockHeight,
-		TotalFees:             &tx.TotalFees,
-		DestinationAddresses:  &destinationAddresses,
-		RawTransactionHex:     &tx.RawTxHex,
-		Label:                 &tx.Label,
-		NodeId:                nodeId,
+		Timestamp:            time.Unix(tx.TimeStamp, 0).UTC(),
+		TransactionHash:      &tx.TxHash,
+		Amount:               &tx.Amount,
+		BlockHash:            &tx.BlockHash,
+		BlockHeight:          &blockHeight,
+		TotalFees:            &tx.TotalFees,
+		DestinationAddresses: &destinationAddresses,
+		RawTransactionHex:    &tx.RawTxHex,
+		Label:                &tx.Label,
+		NodeId:               nodeId,
 	}
 
-	var insertTx = `INSERT INTO tx (timestamp, tx_hash, amount, num_confirmations, block_hash, block_height,
+	var insertTx = `INSERT INTO tx (timestamp, tx_hash, amount, block_hash, block_height,
                 total_fees, dest_addresses, raw_tx_hex, label, node_id, flags)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (timestamp, tx_hash) DO NOTHING;`
 
 	_, err := db.Exec(insertTx,
 		time.Unix(tx.TimeStamp, 0).UTC(),
 		tx.TxHash,
 		tx.Amount,
-		tx.NumConfirmations,
 		tx.BlockHash,
 		tx.BlockHeight,
 		tx.TotalFees,

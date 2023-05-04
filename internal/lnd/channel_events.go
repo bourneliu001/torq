@@ -814,7 +814,7 @@ func processEmptyChanId(channelPoint string, nodeSettings cache.NodeSettingsCach
 		}
 	}
 
-	if cache.GetVectorUrlBase() == vector.VectorUrl && (nodeSettings.Chain != core.Bitcoin || nodeSettings.Network != core.MainNet) {
+	if !vector.IsVectorAvailable(nodeSettings) {
 		log.Info().Msgf("Skipping obtaining short channel id from vector for nodeId: %v", nodeSettings.NodeId)
 		return 0
 	}
