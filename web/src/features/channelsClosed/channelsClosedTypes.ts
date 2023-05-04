@@ -1,6 +1,6 @@
 import { channel } from "features/channels/channelsTypes";
 
-export type ChannelClosed = Omit<channel, "tag"> & {
+export type ChannelClosed = channel & {
   pubKey: string;
   status: string;
   closingNodeName: string;

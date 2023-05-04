@@ -4,13 +4,16 @@ import { ChannelClosed } from "features/channelsClosed/channelsClosedTypes";
 import DefaultCellRenderer from "features/table/DefaultCellRenderer";
 import ChannelCell from "components/table/cells/channelCell/ChannelCell";
 import LongTextCell from "components/table/cells/longText/LongTextCell";
+import TagsCell from "components/table/cells/tags/TagsCell";
+import { GroupByOptions } from "features/viewManagement/types";
 export default function channelsClosedCellRenderer(
   row: ChannelClosed,
   rowIndex: number,
   column: ColumnMetaData<ChannelClosed>,
   columnIndex: number,
   isTotalsRow?: boolean,
-  maxRow?: ChannelClosed
+  maxRow?: ChannelClosed,
+  groupedBy?: GroupByOptions
 ): JSX.Element {
   switch (column.key) {
     case "peerAlias":
@@ -48,6 +51,18 @@ export default function channelsClosedCellRenderer(
           />
         );
       }
+      break;
+    case "tags":
+      return (
+        <TagsCell
+          channelTags={row.channelTags}
+          peerTags={row.peerTags}
+          key={"tagsCell" + rowIndex}
+          channelId={row.channelId}
+          nodeId={row.peerNodeId}
+          displayChannelTags={groupedBy !== "peer"}
+        />
+      );
       break;
   }
 

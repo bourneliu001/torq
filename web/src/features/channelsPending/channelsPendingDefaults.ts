@@ -13,6 +13,7 @@ import { OrderBy } from "features/sidebar/sections/sort/SortSection";
 const defaultColumns: Array<keyof ChannelPending> = [
   "peerAlias",
   "capacity",
+  "tags",
   "status",
   "fundingTransactionHash",
   "closingTransactionHash",

@@ -19,7 +19,16 @@ export type ViewResponse<T> = {
   dirty?: boolean;
 };
 
-export type TableResponses = Forward | OnChainTx | Payment | Invoice | ExpandedTag | channel | workflowListItem;
+export type TableResponses =
+  | Forward
+  | OnChainTx
+  | Payment
+  | Invoice
+  | ExpandedTag
+  | channel
+  | workflowListItem
+  | ChannelClosed
+  | ChannelPending;
 
 export type AllViewsResponse = {
   forwards: Array<ViewResponse<Forward>>;
