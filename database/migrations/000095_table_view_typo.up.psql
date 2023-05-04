@@ -1,0 +1,3 @@
+UPDATE table_view
+SET title = 'Worst performing'
+WHERE title = 'Worsk performing';
