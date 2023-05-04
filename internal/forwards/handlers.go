@@ -52,12 +52,12 @@ func getForwardsTableHandler(c *gin.Context, db *sqlx.DB) {
 
 type forwardsTableRow struct {
 	// Alias of remote peer
-	Alias       null.String `json:"alias"`
-	ChannelTags []tags.Tag  `json:"channelTags"`
-	PeerTags    []tags.Tag  `json:"peerTags"`
-	NodeId      int         `json:"nodeId"`
-	NodeName    string      `json:"nodeName"`
-	PeerId      int         `json:"peerId"`
+	Alias        null.String `json:"alias"`
+	ChannelTags  []tags.Tag  `json:"channelTags"`
+	PeerTags     []tags.Tag  `json:"peerTags"`
+	TorqNodeId   int         `json:"torqNodeId"`
+	TorqNodeName string      `json:"torqNodeName"`
+	PeerNodeId   int         `json:"peerNodeId"`
 	// Database primary key of channel
 	ChannelID              *int   `json:"channelId"`
 	FundingTransactionHash string `json:"fundingTransactionHash"`
@@ -114,9 +114,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 	var sqlString = `
 		select
 			coalesce(scne.node_alias, LEFT(scn.public_key, 20)) as alias,
-			coalesce(fw.node_id, 0) as node_id,
-			coalesce(ncd.name, '') as node_name,
-			case when c.first_node_id = fw.node_id then c.second_node_id else c.first_node_id end as peer_id,
+			coalesce(fw.node_id, 0) as torq_node_id,
+			coalesce(ncd.name, '') as torq_node_name,
+			case when c.first_node_id = fw.node_id then c.second_node_id else c.first_node_id end as peer_node_id,
 			coalesce(c.channel_id, 0) as channel_id,
 			coalesce(c.funding_transaction_hash, 'Funding transaction missing') as funding_transaction_hash,
 			coalesce(c.funding_output_index, 0) as funding_output_index,
@@ -208,9 +208,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		c := &forwardsTableRow{}
 		err = rows.Scan(
 			&c.Alias,
-			&c.NodeId,
-			&c.NodeName,
-			&c.PeerId,
+			&c.TorqNodeId,
+			&c.TorqNodeName,
+			&c.PeerNodeId,
 			&c.ChannelID,
 			&c.FundingTransactionHash,
 			&c.FundingOutputIndex,
@@ -248,7 +248,7 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		if c.ChannelID != nil {
 			c.ChannelTags = tags.GetTagsByTagIds(cache.GetTagIdsByChannelId(*c.ChannelID))
 		}
-		c.PeerTags = tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(c.PeerId))
+		c.PeerTags = tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(c.PeerNodeId))
 
 		// Append to the result
 		r = append(r, c)

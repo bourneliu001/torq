@@ -143,7 +143,7 @@ export const AllForwardsColumns: ColumnMetaData<Forward>[] = [
 	{
 		heading: "Node Name",
 		type: "TextCell",
-		key: "nodeName",
+		key: "torqNodeName",
 		valueType: "string",
 	},
 ];

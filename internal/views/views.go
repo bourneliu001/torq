@@ -1673,7 +1673,7 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 			},
 		},
 		{
-			key:        "nodeName",
+			key:        "torqNodeName",
 			heading:    "Node Name",
 			visualType: "TextCell",
 			valueType:  "string",
