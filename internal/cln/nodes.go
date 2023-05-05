@@ -98,6 +98,9 @@ func storeNodes(db *sqlx.DB,
 	nodeSettings cache.NodeSettingsCache) error {
 
 	for _, clnNode := range clnNodes {
+		if clnNode == nil {
+			continue
+		}
 		eventTime := time.Now().UTC()
 		if clnNode.LastTimestamp != nil {
 			eventTime = time.Unix(int64(*clnNode.LastTimestamp), 0)
@@ -134,10 +137,12 @@ func storeNodes(db *sqlx.DB,
 
 		// TODO FIXME ignore if previous update was from the same node so if event_node_id=node_id on previous record
 		// and the current parameters are event_node_id!=node_id
-		// TODO FIXME nodeAddresses or features can change order and still be identical
+
+		// nodeAddresses or features can change order and still be identical
+		sortedNajb := sortNodeAddressesJson(nodeEvent, nodeSettings)
 		if alias == nodeEvent.Alias &&
 			color == nodeEvent.Color &&
-			string(najb) == nodeEvent.NodeAddresses &&
+			string(najb) == string(sortedNajb) &&
 			string(fjb) == nodeEvent.Features {
 
 			return nil
@@ -153,4 +158,24 @@ func storeNodes(db *sqlx.DB,
 		cache.SetNodeAlias(eventNodeId, alias)
 	}
 	return nil
+}
+
+func sortNodeAddressesJson(nodeEvent graph_events.NodeEventFromGraph, nodeSettings cache.NodeSettingsCache) []byte {
+	if nodeEvent.NodeAddresses == "" {
+		return []byte(nodeEvent.NodeAddresses)
+	}
+	var na []*cln.ListnodesNodesAddresses
+	err := json.Unmarshal([]byte(nodeEvent.NodeAddresses), &na)
+	if err != nil {
+		log.Error().Err(err).Msgf(
+			"Couldn't reorder node addresses json (unmarshal) for nodeId: %v", nodeSettings.NodeId)
+		return []byte(nodeEvent.NodeAddresses)
+	}
+	sortedNajb, err := json.Marshal(na)
+	if err != nil {
+		log.Error().Err(err).Msgf(
+			"Couldn't reorder node addresses json (marshal) for nodeId: %v", nodeSettings.NodeId)
+		return []byte(nodeEvent.NodeAddresses)
+	}
+	return sortedNajb
 }

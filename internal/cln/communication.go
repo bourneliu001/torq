@@ -1356,10 +1356,6 @@ func prepareInvoiceRequest(request lightning_helpers.NewInvoiceRequest) (*cln.In
 		amountMsat := uint64(*request.ValueMsat)
 		req.AmountMsat = &cln.AmountOrAny{Value: &cln.AmountOrAny_Amount{Amount: &cln.Amount{Msat: amountMsat}}}
 	}
-	// TODO FIXME CLN is this even accurate?
-	if request.Private != nil {
-		req.Exposeprivatechannels = request.Private
-	}
 	// TODO FIXME CLN Better labeling?
 	req.Label = time.Now().UTC().Format("20060102.150405.000000")
 	// TODO FIXME CLN AMP?
@@ -1487,7 +1483,7 @@ func processDecodeInvoiceRequest(ctx context.Context,
 	}
 
 	client := cln.NewNodeClient(connection)
-	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &request.Invoice})
+	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: request.Invoice})
 	// TODO: Handle different error types like incorrect checksum etc to explain why the decode failed.
 	if err != nil {
 		response.Error = err.Error()
@@ -1517,7 +1513,7 @@ func processDecodeInvoiceRequest(ctx context.Context,
 
 func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	response lightning_helpers.DecodeInvoiceResponse) lightning_helpers.DecodeInvoiceResponse {
-	if decodedInvoice == nil || decodedInvoice.Valid == nil || !*decodedInvoice.Valid {
+	if decodedInvoice == nil || !decodedInvoice.Valid {
 		return response
 	}
 	response.Status = lightning_helpers.Active
@@ -1525,16 +1521,13 @@ func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	nodeSettings := cache.GetNodeSettingsByNodeId(response.Request.NodeId)
 	response.NodeAlias = cache.GetNodeAlias(cache.GetPeerNodeIdByPublicKey(response.DestinationPubKey, nodeSettings.Chain, nodeSettings.Network))
 	response.RHash = hex.EncodeToString(decodedInvoice.PaymentHash)
-	if decodedInvoice.Description != nil {
-		response.Memo = *decodedInvoice.Description
+	if decodedInvoice.InvoiceAmountMsat != nil {
+		response.ValueMsat = int64((*decodedInvoice.InvoiceAmountMsat).Msat)
 	}
-	if decodedInvoice.AmountMsat != nil {
-		response.ValueMsat = int64((*decodedInvoice.AmountMsat).Msat)
-	}
-	if decodedInvoice.Fallbacks != nil {
-		for _, fb := range decodedInvoice.Fallbacks {
+	if decodedInvoice.InvoiceFallbacks != nil {
+		for _, fb := range decodedInvoice.InvoiceFallbacks {
 			if response.FallbackAddr == "" {
-				response.FallbackAddr = fb.GetAddr()
+				response.FallbackAddr = fb.GetAddress()
 			}
 		}
 	}
@@ -1550,38 +1543,38 @@ func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	if decodedInvoice.MinFinalCltvExpiry != nil {
 		response.CltvExpiry = int64(*decodedInvoice.MinFinalCltvExpiry)
 	}
-	response.RouteHints = constructRoutes(decodedInvoice.Routes)
-	response.Features = constructFeatureMap(decodedInvoice.Features)
+	//response.RouteHints = constructRoutes(decodedInvoice.Routes)
+	response.Features = constructFeatureMap(decodedInvoice.InvoiceFeatures)
 	return response
 }
 
-func constructRoutes(routes *cln.Routes) []lightning_helpers.RouteHint {
-	var r []lightning_helpers.RouteHint
-
-	if routes != nil {
-		for _, rh := range routes.Routes {
-			var hopHints []lightning_helpers.HopHint
-			for _, hh := range rh.Hops {
-				feeBaseMsat := uint32(0)
-				if hh.FeeBaseMsat != nil {
-					feeBaseMsat = uint32((*hh.FeeBaseMsat).Msat)
-				}
-				hopHints = append(hopHints, lightning_helpers.HopHint{
-					ShortChannelId:         hh.ShortChannelId,
-					ChannelSourcePublicKey: hex.EncodeToString(hh.Pubkey),
-					FeeBaseMsat:            feeBaseMsat,
-					CltvExpiryDelta:        hh.CltvExpiryDelta,
-					FeeProportional:        hh.FeeProportionalMillionths,
-				})
-			}
-			r = append(r, lightning_helpers.RouteHint{
-				HopHints: hopHints,
-			})
-		}
-	}
-
-	return r
-}
+//func constructRoutes(routes *cln.Routes) []lightning_helpers.RouteHint {
+//	var r []lightning_helpers.RouteHint
+//
+//	if routes != nil {
+//		for _, rh := range routes.Routes {
+//			var hopHints []lightning_helpers.HopHint
+//			for _, hh := range rh.Hops {
+//				feeBaseMsat := uint32(0)
+//				if hh.FeeBaseMsat != nil {
+//					feeBaseMsat = uint32((*hh.FeeBaseMsat).Msat)
+//				}
+//				hopHints = append(hopHints, lightning_helpers.HopHint{
+//					ShortChannelId:         hh.ShortChannelId,
+//					ChannelSourcePublicKey: hex.EncodeToString(hh.Pubkey),
+//					FeeBaseMsat:            feeBaseMsat,
+//					CltvExpiryDelta:        hh.CltvExpiryDelta,
+//					FeeProportional:        hh.FeeProportionalMillionths,
+//				})
+//			}
+//			r = append(r, lightning_helpers.RouteHint{
+//				HopHints: hopHints,
+//			})
+//		}
+//	}
+//
+//	return r
+//}
 
 func constructFeatureMap(features []byte) lightning_helpers.FeatureMap {
 	f := lightning_helpers.FeatureMap{}

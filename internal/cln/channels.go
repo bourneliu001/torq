@@ -266,18 +266,18 @@ func processPeerChannel(db *sqlx.DB,
 	}
 	if clnPeerChannel.Closer != nil {
 		switch *clnPeerChannel.Closer {
-		case cln.ChannelSide_IN:
+		case cln.ChannelSide_REMOTE:
 			channel.ClosingNodeId = &peerNodeId
-		case cln.ChannelSide_OUT:
+		case cln.ChannelSide_LOCAL:
 			channel.ClosingNodeId = &nodeSettings.NodeId
 		}
 	}
 	if clnPeerChannel.Opener != nil {
 		switch *clnPeerChannel.Opener {
-		case cln.ChannelSide_IN:
+		case cln.ChannelSide_REMOTE:
 			channel.InitiatingNodeId = &peerNodeId
 			channel.AcceptingNodeId = &nodeSettings.NodeId
-		case cln.ChannelSide_OUT:
+		case cln.ChannelSide_LOCAL:
 			channel.InitiatingNodeId = &nodeSettings.NodeId
 			channel.AcceptingNodeId = &peerNodeId
 		}
@@ -326,13 +326,13 @@ func processPeerChannel(db *sqlx.DB,
 			channelId, nodeSettings.NodeId)
 		return channelId, nil
 	}
-	if clnPeerChannel.ChannelType != nil {
-		for _, ctn := range (*clnPeerChannel.ChannelType).Names {
-			if channelState.CommitmentType == core.CommitmentTypeUnknown {
-				channelState.CommitmentType = core.GetCommitmentTypeForCln(ctn)
-			}
-		}
-	}
+	//if clnPeerChannel.ChannelType != nil {
+	//	for _, ctn := range (*clnPeerChannel.ChannelType).Names {
+	//		if channelState.CommitmentType == core.CommitmentTypeUnknown {
+	//			channelState.CommitmentType = core.GetCommitmentTypeForCln(ctn)
+	//		}
+	//	}
+	//}
 	var htlcs []cache.Htlc
 	pendingIncomingHtlcCount := 0
 	pendingIncomingHtlcAmount := int64(0)

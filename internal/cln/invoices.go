@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -180,7 +179,7 @@ func storeInvoice(ctx context.Context,
 		if clnInvoice.Bolt12 != nil {
 			invoiceString = *clnInvoice.Bolt12
 		}
-		decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &invoiceString})
+		decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: invoiceString})
 		if err != nil {
 			return errors.Wrapf(err,
 				"decoding invoice failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
@@ -209,45 +208,24 @@ func storeInvoice(ctx context.Context,
 				destinationNodeId = &destinationNodeIdInt
 			}
 		}
-		var routeHints *string
-		if decodedInvoice.Routes != nil {
-			routeHintsArray := constructRoutes(decodedInvoice.Routes)
-			routeHintsBytes, err := json.Marshal(routeHintsArray)
-			if err != nil {
-				return errors.Wrapf(err,
-					"marshalling route hint failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
-			}
-			routeHintsString := string(routeHintsBytes)
-			routeHints = &routeHintsString
-		}
-		var features *string
-		if decodedInvoice.Features != nil {
-			featuresArray := constructFeatureMap(decodedInvoice.Features)
-			featuresBytes, err := json.Marshal(featuresArray)
-			if err != nil {
-				return errors.Wrapf(err,
-					"marshalling features failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
-			}
-			featuresString := string(featuresBytes)
-			features = &featuresString
-		}
 
-		// TODO FIXME CLN can we get HTLCs for a settled invoice?
+		// TODO FIXME CLN: can we get HTLCs for a settled invoice?
+		// TODO FIXME CLN: RoutHints, Features are missing?
 
 		_, err = db.Exec(`INSERT INTO invoice (
 				memo, label, type,
 				r_preimage, r_hash,
 				value_msat, settle_date, expiry, settle_index, amt_paid_msat, invoice_state,
-			 	creation_date, description_hash, destination_node_id, destination_pub_key, route_hints, features,
+			 	creation_date, description_hash, destination_node_id, destination_pub_key,
             	bolt11, bolt12,
 				node_id, created_on, updated_on
 			) VALUES (
-				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
 			);`,
 			clnInvoice.Description, clnInvoice.Label, decodedInvoice.ItemType,
 			hex.EncodeToString(clnInvoice.PaymentPreimage), hex.EncodeToString(clnInvoice.PaymentHash),
 			amountMsat, paidAt, expiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
-			creationDate, descriptionHash, destinationNodeId, destinationPublicKey, routeHints, features,
+			creationDate, descriptionHash, destinationNodeId, destinationPublicKey,
 			clnInvoice.Bolt11, clnInvoice.Bolt12,
 			nodeSettings.NodeId, time.Now(), time.Now())
 		if err != nil {

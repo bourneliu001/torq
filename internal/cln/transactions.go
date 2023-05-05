@@ -2,7 +2,6 @@ package cln
 
 import (
 	"context"
-	"database/sql"
 	"encoding/hex"
 	"time"
 
@@ -112,9 +111,6 @@ func getMaximumBlockHeight(db *sqlx.DB, nodeSettings cache.NodeSettingsCache) (i
 	var blockHeight int
 	err := db.Get(&blockHeight, `SELECT COALESCE(MAX(block_height), 0) FROM tx WHERE node_id=$1;`, nodeSettings.NodeId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			blockHeight = 0
-		}
 		return 0, errors.Wrapf(err, "obtaining maximum block height for transactions for nodeId: %v", nodeSettings.NodeId)
 	}
 	return blockHeight, nil

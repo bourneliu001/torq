@@ -114,11 +114,8 @@ func processClosedChannel(db *sqlx.DB,
 	nodeSettings cache.NodeSettingsCache,
 	peerNodeId int) error {
 
-	var fundingOutputIndex *int
-	if clnChannel.FundingOutnum != nil {
-		foi := int(*clnChannel.FundingOutnum)
-		fundingOutputIndex = &foi
-	}
+	foi := int(clnChannel.FundingOutnum)
+	fundingOutputIndex := &foi
 	var fundingTransactionHash *string
 	if len(clnChannel.FundingTxid) != 0 {
 		fti := hex.EncodeToString(clnChannel.FundingTxid)
@@ -162,6 +159,15 @@ func processClosedChannel(db *sqlx.DB,
 			Flags:                  channelSettings.Flags,
 		}
 	}
+	channel.Private = clnChannel.Private
+	switch clnChannel.Opener {
+	case cln.ChannelSide_REMOTE:
+		channel.InitiatingNodeId = &peerNodeId
+		channel.AcceptingNodeId = &nodeSettings.NodeId
+	case cln.ChannelSide_LOCAL:
+		channel.InitiatingNodeId = &nodeSettings.NodeId
+		channel.AcceptingNodeId = &peerNodeId
+	}
 	if clnChannel.ShortChannelId != nil {
 		shortChannelId := *clnChannel.ShortChannelId
 		channel.ShortChannelID = &shortChannelId
@@ -169,26 +175,12 @@ func processClosedChannel(db *sqlx.DB,
 	if clnChannel.TotalMsat != nil {
 		channel.Capacity = int64(clnChannel.TotalMsat.Msat / 1_000)
 	}
-
-	if clnChannel.Private != nil {
-		channel.Private = *clnChannel.Private
-	}
 	if clnChannel.Closer != nil {
 		switch *clnChannel.Closer {
-		case cln.ChannelSide_IN:
+		case cln.ChannelSide_REMOTE:
 			channel.ClosingNodeId = &peerNodeId
-		case cln.ChannelSide_OUT:
+		case cln.ChannelSide_LOCAL:
 			channel.ClosingNodeId = &nodeSettings.NodeId
-		}
-	}
-	if clnChannel.Opener != nil {
-		switch *clnChannel.Opener {
-		case cln.ChannelSide_IN:
-			channel.InitiatingNodeId = &peerNodeId
-			channel.AcceptingNodeId = &nodeSettings.NodeId
-		case cln.ChannelSide_OUT:
-			channel.InitiatingNodeId = &nodeSettings.NodeId
-			channel.AcceptingNodeId = &peerNodeId
 		}
 	}
 	_, err := channels.AddChannelOrUpdateChannelStatus(db, nodeSettings, channel)

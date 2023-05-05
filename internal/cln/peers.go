@@ -92,6 +92,9 @@ func listAndProcessPeers(ctx context.Context, db *sqlx.DB, client client_ListPee
 func storePeers(db *sqlx.DB, peers []*cln.ListpeersPeers, nodeSettings cache.NodeSettingsCache) error {
 	processedPeerNodeIds := make(map[int]bool)
 	for _, peer := range peers {
+		if peer == nil {
+			continue
+		}
 		peerPublicKey := hex.EncodeToString(peer.Id)
 		peerNodeId := cache.GetPeerNodeIdByPublicKey(peerPublicKey, nodeSettings.Chain, nodeSettings.Network)
 		if peerNodeId == 0 {

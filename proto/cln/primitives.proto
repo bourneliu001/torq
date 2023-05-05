@@ -22,8 +22,8 @@ message AmountOrAny {
 }
 
 enum ChannelSide {
-	IN = 0;
-	OUT = 1;
+	LOCAL = 0;
+	REMOTE = 1;
 }
 
 enum ChannelState {
@@ -38,6 +38,20 @@ enum ChannelState {
 	Onchain = 8;
 	DualopendOpenInit = 9;
 	DualopendAwaitingLockin = 10;
+}
+
+enum HtlcState {
+      SentAddHtlc = 0;
+      SentAddCommit = 1;
+      RcvdAddRevocation = 2;
+      RcvdAddAckCommit = 3;
+      SentAddAckRevocation = 4;
+      RcvdAddAckRevocation = 5;
+      RcvdRemoveHtlc = 6;
+      RcvdRemoveCommit = 7;
+      SentRemoveRevocation = 8;
+      SentRemoveAckCommit = 9;
+      RcvdRemoveAckRevocation = 10;
 }
 
 message ChannelStateChangeCause {}
@@ -64,9 +78,9 @@ message OutputDesc {
 
 message RouteHop {
 	bytes id = 1;
-	string short_channel_id = 2;
+        string short_channel_id = 2;
 	Amount feebase = 3;
-	uint32 feeprop = 4;
+        uint32 feeprop = 4;
 	uint32 expirydelta = 5;
 }
 message Routehint {
@@ -83,19 +97,4 @@ message TlvEntry {
 }
 message TlvStream {
 	repeated TlvEntry entries = 1;
-}
-
-
-message Hop {
-	bytes pubkey = 1;
-	string short_channel_id = 2;
-	Amount fee_base_msat = 3;
-	uint32 fee_proportional_millionths = 4;
-	uint32 cltv_expiry_delta = 5;
-}
-message Routes {
-	repeated Route routes = 1;
-}
-message Route {
-	repeated Hop hops = 1;
 }
