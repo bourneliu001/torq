@@ -20,6 +20,7 @@ import { format } from "d3";
 import { userEvents } from "../../utils/userEvents";
 import ErrorSummary from "../../components/errors/ErrorSummary";
 import { FormErrors } from "../../components/errors/errors";
+import { useMoveFundsOffChainMutation } from "./moveFundsApi";
 
 const formatAmount = (amount: number) => format(",.0f")(amount);
 
@@ -66,10 +67,10 @@ function moveFundsModal() {
   const [amount, setAmount] = useLocalStorage<number>("moveFundsAmount", 0);
   const [moveChain, setMoveChain] = useLocalStorage<string>("moveFundsChain", "move-funds-off-chain");
   const [channelOptions, setChannelOptions] = useState<Array<ChannelOption>>();
-
   const [selectedChannelId, setSelectedChannelId] = useLocalStorage<number | undefined>("moveFundsChannel", undefined);
-
   const [maxAmount, setMaxAmount] = useState<number>(0);
+
+  const [moveFundsOffChain] = useMoveFundsOffChainMutation();
 
   interface Option {
     label: string;
@@ -102,7 +103,7 @@ function moveFundsModal() {
   useEffect(() => {
     if (channelsResponse?.data) {
       const options: Array<ChannelOption> = channelsResponse.data
-        .filter((c) => [selectedFromNodeId].includes(c.nodeId))
+        .filter((c) => [selectedFromNodeId].includes(c.peerNodeId))
         .map((channel: channel) => {
           return {
             label: channel.shortChannelId,
@@ -148,7 +149,7 @@ function moveFundsModal() {
     }
   }, [amount, maxAmount]);
 
-  const SingleValue = ({ ...props }: SingleValueProps<unknown>) => {
+  const SingleValue = (props: SingleValueProps<unknown>) => {
     const channel = props.data as ChannelOption;
     return (
       <components.SingleValue {...props}>
@@ -182,6 +183,16 @@ function moveFundsModal() {
     e.preventDefault();
     // TODO: Add track event
     console.log("submit");
+    if (moveChain === "move-funds-off-chain") {
+      moveFundsOffChain({
+        outgoingNodeId: selectedFromNodeId,
+        incomingNodeId: selectedToNodeId,
+        channelId: selectedChannelId,
+        amountMsat: amount * 1000,
+      }).then((res) => {
+        console.log(res);
+      });
+    }
   }
 
   return (

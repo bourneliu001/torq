@@ -525,3 +525,57 @@ func ChannelStatusUpdate(request lightning_helpers.ChannelStatusUpdateRequest) e
 	}
 	return nil
 }
+
+func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) (lightning_helpers.MoveFundsOffChainResponse, error) {
+	response := lightning_helpers.MoveFundsOffChainResponse{
+		Request: request,
+		CommunicationResponse: lightning_helpers.CommunicationResponse{
+			Status: lightning_helpers.Inactive,
+		},
+	}
+
+	nodeConnectionDetails := cache.GetNodeConnectionDetails(request.NodeId)
+	switch nodeConnectionDetails.Implementation {
+	case core.LND:
+		if !cache.IsLndServiceActive(request.NodeId) {
+			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
+		}
+		response = lnd.MoveFundsOffChain(request)
+		return response, nil
+	case core.CLN:
+		if !cache.IsClnServiceActive(request.NodeId) {
+			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
+		}
+		return lightning_helpers.MoveFundsOffChainResponse{}, UnsupportedOperationError
+	}
+	response = cln.MoveFundsOffChain(request)
+	return response, nil
+}
+
+//
+//func MoveFundsOnChain(request lightning_helpers.MoveFundsOnChainRequest) (lightning_helpers.MoveFundsOnChainResponse, error) {
+//	response := lightning_helpers.MoveFundsOnChainResponse{
+//		Request: request,
+//		CommunicationResponse: lightning_helpers.CommunicationResponse{
+//			Status: lightning_helpers.Inactive,
+//		},
+//	}
+//
+//	nodeConnectionDetails := cache.GetNodeConnectionDetails(request.NodeId)
+//	switch nodeConnectionDetails.Implementation {
+//	case core.LND:
+//		if !cache.IsLndServiceActive(request.NodeId) {
+//			return lightning_helpers.MoveFundsOnChainResponse{}, ServiceInactiveError
+//		}
+//		response = lnd.PaymentToAddress(request)
+//	case core.CLN:
+//		if !cache.IsClnServiceActive(request.NodeId) {
+//			return lightning_helpers.MoveFundsOnChainResponse{}, ServiceInactiveError
+//		}
+//		return lightning_helpers.MoveFundsOnChainResponse{}, UnsupportedOperationError
+//	}
+//	if response.Error != "" {
+//		return lightning_helpers.MoveFundsOnChainResponse{}, errors.New(response.Error)
+//	}
+//	return response, nil
+//}

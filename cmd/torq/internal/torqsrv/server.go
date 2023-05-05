@@ -2,6 +2,7 @@ package torqsrv
 
 import (
 	"fmt"
+	"github.com/lncapital/torq/internal/move_funds"
 	"net/http"
 	"strconv"
 	"strings"
@@ -230,6 +231,11 @@ func registerRoutes(r *gin.Engine, db *sqlx.DB, apiPwd string, cookiePath string
 		settingRoutes := api.Group("settings")
 		{
 			settings.RegisterSettingRoutes(settingRoutes, db)
+		}
+
+		moveFundsRoutes := api.Group("move-funds")
+		{
+			move_funds.RegisterMoveFundsRoutes(moveFundsRoutes)
 		}
 
 		api.GET("/ping", func(c *gin.Context) {
