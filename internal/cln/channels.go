@@ -20,8 +20,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamChannelsTickerSeconds = 10
-
 type client_ListChannels interface {
 	ListPeerChannels(ctx context.Context,
 		in *cln.ListpeerchannelsRequest,

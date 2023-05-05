@@ -17,8 +17,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamPaymentsTickerSeconds = 15 * 60
-
 type client_ListPayments interface {
 	ListSendPays(ctx context.Context,
 		in *cln.ListsendpaysRequest,

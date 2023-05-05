@@ -18,8 +18,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamPeersTickerSeconds = 60
-
 type client_ListPeers interface {
 	ListPeers(ctx context.Context, in *cln.ListpeersRequest, opts ...grpc.CallOption) (*cln.ListpeersResponse, error)
 }

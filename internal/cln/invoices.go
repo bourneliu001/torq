@@ -16,8 +16,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamInvoicesTickerSeconds = 15 * 60
-
 type client_ListInvoices interface {
 	ListInvoices(ctx context.Context,
 		in *cln.ListinvoicesRequest,
@@ -138,7 +136,6 @@ func storeInvoice(ctx context.Context,
 	clnInvoice *cln.ListinvoicesInvoices,
 	nodeSettings cache.NodeSettingsCache) error {
 
-	expiresAt := time.Unix(int64(clnInvoice.ExpiresAt), 0)
 	var paidAt *time.Time
 	if clnInvoice.PaidAt != nil {
 		paidAtTime := time.Unix(int64(*clnInvoice.PaidAt), 0)
@@ -224,7 +221,7 @@ func storeInvoice(ctx context.Context,
 			);`,
 			clnInvoice.Description, clnInvoice.Label, decodedInvoice.ItemType,
 			hex.EncodeToString(clnInvoice.PaymentPreimage), hex.EncodeToString(clnInvoice.PaymentHash),
-			amountMsat, paidAt, expiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
+			amountMsat, paidAt, clnInvoice.ExpiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
 			creationDate, descriptionHash, destinationNodeId, destinationPublicKey,
 			clnInvoice.Bolt11, clnInvoice.Bolt12,
 			nodeSettings.NodeId, time.Now(), time.Now())

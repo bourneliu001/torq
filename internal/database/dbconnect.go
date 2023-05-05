@@ -7,14 +7,15 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/signalfx/splunk-otel-go/instrumentation/github.com/jmoiron/sqlx/splunksqlx"
 )
 
 func PgConnect(dbName string, user string, password string, host string, port string) (*sqlx.DB, error) {
-	db, err := sqlx.Connect("postgres",
+	db, err := splunksqlx.Connect("postgres",
 		fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 			host, port, user, password, dbName))
 	if err != nil {
-		defaultDB, err := sqlx.Connect("postgres",
+		defaultDB, err := splunksqlx.Connect("postgres",
 			fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 				host, port, "postgres", password, "postgres"))
 		if err != nil {
@@ -42,7 +43,7 @@ func PgConnect(dbName string, user string, password string, host string, port st
 				return nil, errors.Wrap(err, "pg connect")
 			}
 		}
-		db, err = sqlx.Connect("postgres",
+		db, err = splunksqlx.Connect("postgres",
 			fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 				host, port, user, password, dbName))
 		if err != nil {

@@ -12,12 +12,11 @@ import (
 
 	"github.com/lncapital/torq/internal/cache"
 	"github.com/lncapital/torq/internal/channels"
+	"github.com/lncapital/torq/internal/core"
 	"github.com/lncapital/torq/internal/nodes"
 	"github.com/lncapital/torq/internal/services_helpers"
 	"github.com/lncapital/torq/proto/cln"
 )
-
-const streamClosedChannelsTickerSeconds = 10
 
 type client_ListClosedChannels interface {
 	ListClosedChannels(ctx context.Context,
@@ -182,6 +181,23 @@ func processClosedChannel(db *sqlx.DB,
 		case cln.ChannelSide_LOCAL:
 			channel.ClosingNodeId = &nodeSettings.NodeId
 		}
+	}
+	switch clnChannel.CloseCause {
+	case cln.ListclosedchannelsClosedchannels_USER:
+		channel.Status = core.CooperativeClosed
+	case cln.ListclosedchannelsClosedchannels_REMOTE:
+		channel.Status = core.RemoteForceClosed
+	case cln.ListclosedchannelsClosedchannels_LOCAL:
+		channel.Status = core.LocalForceClosed
+	case cln.ListclosedchannelsClosedchannels_PROTOCOL:
+		// TODO FIXME CLN: This is just a guess there is no information to be found about breach
+		channel.Status = core.BreachClosed
+	case cln.ListclosedchannelsClosedchannels_ONCHAIN:
+		// TODO FIXME CLN: This is just a guess there is no information to be found about abandoned
+		channel.Status = core.AbandonedClosed
+	case cln.ListclosedchannelsClosedchannels_UNKNOWN:
+		// TODO FIXME CLN: This is just a guess there is no information to be found about funding cancelled
+		channel.Status = core.FundingCancelledClosed
 	}
 	_, err := channels.AddChannelOrUpdateChannelStatus(db, nodeSettings, channel)
 	if err != nil {

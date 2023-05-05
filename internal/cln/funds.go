@@ -16,8 +16,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamFundsTickerSeconds = 10
-
 type client_ListFunds interface {
 	ListFunds(ctx context.Context,
 		in *cln.ListfundsRequest,

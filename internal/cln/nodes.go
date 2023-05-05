@@ -19,8 +19,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamNodesTickerSeconds = 15 * 60
-
 type client_ListNodes interface {
 	ListNodes(ctx context.Context,
 		in *cln.ListnodesRequest,

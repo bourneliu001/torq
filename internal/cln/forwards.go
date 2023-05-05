@@ -17,8 +17,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamForwardsTickerSeconds = 15 * 60
-
 type forwardStatus int
 
 const (

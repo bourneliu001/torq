@@ -18,8 +18,6 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamTransactionsTickerSeconds = 15 * 60
-
 type client_ListTransactions interface {
 	ListTransactions(ctx context.Context,
 		in *cln.ListtransactionsRequest,

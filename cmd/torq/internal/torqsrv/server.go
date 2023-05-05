@@ -18,6 +18,7 @@ import (
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/lncapital/torq/internal/auth"
 	"github.com/lncapital/torq/internal/automation"
@@ -44,6 +45,7 @@ import (
 
 func Start(host string, port int, apiPswd string, cookiePath string, db *sqlx.DB, autoLogin bool) error {
 	r := gin.Default()
+	r.Use(otelgin.Middleware("torq-backend"))
 
 	if err := auth.RefreshCookieFile(cookiePath); err != nil {
 		return errors.Wrap(err, "Refreshing cookie file")

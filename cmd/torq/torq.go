@@ -13,10 +13,17 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 	"github.com/urfave/cli/v2/altsrc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	stdout "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/build"
@@ -75,6 +82,10 @@ func main() {
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "torq.pprof.path",
 			Usage: "Set pprof path",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "torq.prometheus.path",
+			Usage: "Set prometheus path",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "torq.vector.url",
@@ -173,6 +184,16 @@ func main() {
 			Name:  "cln.ca-certificate-path",
 			Usage: "Path on disk to CLN ca certificate file",
 		}),
+
+		// OTEL details
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.type",
+			Usage: "Type of OpenTelemetry exporter stdout/file/jaeger",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.endpoint",
+			Usage: "endpoint for jaeger",
+		}),
 	}
 
 	start := &cli.Command{
@@ -185,6 +206,33 @@ func main() {
 				zerolog.SetGlobalLevel(debuglevel)
 				log.Debug().Msgf("DebugLevel: %v enabled", debuglevel)
 			}
+
+			var exporter tracesdk.SpanExporter
+			switch strings.ToLower(c.String("otel.exporter.type")) {
+			case "stdout":
+				// Set up OTLP tracing (stdout for debug).
+				exporter, err = stdout.New(stdout.WithPrettyPrint())
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+			case "jaeger":
+				exporter, err = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(c.String("otel.exporter.endpoint"))))
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+			}
+			tp := tracesdk.NewTracerProvider(
+				tracesdk.WithSampler(tracesdk.AlwaysSample()),
+				tracesdk.WithBatcher(exporter),
+				tracesdk.WithResource(resource.NewWithAttributes(
+					build.ExtendedVersion(),
+				)),
+			)
+			otel.SetTracerProvider(tp)
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+			defer func() { _ = exporter.Shutdown(context.Background()) }()
 
 			// Print startup message
 			fmt.Printf("Starting Torq %s\n", build.ExtendedVersion())
@@ -239,6 +287,10 @@ func main() {
 
 			if c.String("torq.pprof.path") != "" {
 				go pprofStartup(c)
+			}
+
+			if c.String("torq.prometheus.path") != "" {
+				go prometheusStartup(c)
 			}
 
 			if err = torqsrv.Start(c.String("torq.network-interface"), c.Int("torq.port"), c.String("torq.password"),
@@ -299,6 +351,14 @@ func pprofStartup(c *cli.Context) {
 	err := http.ListenAndServe(c.String("torq.pprof.path"), nil) //nolint:gosec
 	if err != nil {
 		log.Error().Err(err).Msg("Torq could not start pprof")
+	}
+}
+
+func prometheusStartup(c *cli.Context) {
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(c.String("torq.prometheus.path"), nil) //nolint:gosec
+	if err != nil {
+		log.Error().Err(err).Msg("Torq could not start prometheus")
 	}
 }
 
