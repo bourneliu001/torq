@@ -33,7 +33,7 @@ export default function channelsClosedCellRenderer(
         return (
           <LongTextCell
             key={"fundingTransactionHashCell" + rowIndex}
-            current={row.fundingTransactionHash}
+            text={row.fundingTransactionHash}
             link={"https://mempool.space/tx/" + row.fundingTransactionHash}
             copyText={row.fundingTransactionHash}
           />
@@ -45,7 +45,7 @@ export default function channelsClosedCellRenderer(
         return (
           <LongTextCell
             key={"closingTransactionHashCell" + rowIndex}
-            current={row.closingTransactionHash}
+            text={row.closingTransactionHash}
             link={"https://mempool.space/tx/" + row.closingTransactionHash}
             copyText={row.closingTransactionHash}
           />

@@ -69,11 +69,7 @@ export default function channelsCellRenderer(
   if ([MEMPOOL_SPACE, AMBOSS_SPACE, ONE_ML].includes(column.key)) {
     if (row.private)
       return (
-        <TextCell
-          key={column.key + rowIndex}
-          className={cellStyles.cell}
-          current={"Channel private, links unavailable"}
-        />
+        <TextCell key={column.key + rowIndex} className={cellStyles.cell} text={"Channel private, links unavailable"} />
       );
 
     return (

@@ -1017,7 +1017,7 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 		{
 			key:        "alias",
 			locked:     true,
-			heading:    "Name",
+			heading:    "Peer Alias",
 			visualType: "AliasCell",
 			valueType:  "string",
 			pages: map[TableViewPage]int{
@@ -1672,6 +1672,15 @@ func getTableViewColumnDefinitions() []tableViewColumnDefinition {
 			valueType:  "date",
 			pages: map[TableViewPage]int{
 				PagePeers: 10,
+			},
+		},
+		{
+			key:        "torqNodeName",
+			heading:    "Node Name",
+			visualType: "TextCell",
+			valueType:  "string",
+			pages: map[TableViewPage]int{
+				PageForwards: 23,
 			},
 		},
 	}

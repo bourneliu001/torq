@@ -8,7 +8,7 @@ import { Forward } from "features/forwards/forwardsTypes";
 
 export const AllForwardsColumns: ColumnMetaData<Forward>[] = [
 	{
-		heading: "Name",
+		heading: "Peer Alias",
 		type: "AliasCell",
 		key: "alias",
 		valueType: "string",
@@ -139,6 +139,12 @@ export const AllForwardsColumns: ColumnMetaData<Forward>[] = [
 		type: "BooleanCell",
 		key: "open",
 		valueType: "boolean",
+	},
+	{
+		heading: "Node Name",
+		type: "TextCell",
+		key: "torqNodeName",
+		valueType: "string",
 	},
 ];
 

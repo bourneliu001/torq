@@ -38,7 +38,7 @@ export default function channelsCellRenderer(
         peerTags={row.peerTags}
         key={"tags" + rowIndex + columnIndex}
         channelId={row.channelId}
-        nodeId={row.secondNodeId}
+        nodeId={row.peerNodeId}
         totalCell={isTotalsRow}
         displayChannelTags={groupedBy !== "peer"}
       />

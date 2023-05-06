@@ -4,8 +4,7 @@ import cellStyles from "components/table/cells/cell.module.scss";
 import styles from "./text_cell.module.scss";
 
 export type TextCellProps = {
-  current: string;
-  current2?: string;
+  text: string | Array<string>;
   link?: string;
   copyText?: string;
   className?: string;
@@ -13,6 +12,7 @@ export type TextCellProps = {
 };
 
 const TextCell = (props: TextCellProps) => {
+  const textArray = Array.isArray(props.text) ? props.text : [props.text];
   return (
     <div
       className={classNames(
@@ -23,16 +23,13 @@ const TextCell = (props: TextCellProps) => {
       )}
     >
       {!props.totalCell && (
-      <div>
         <div>
-          <span className={classNames(styles.content)}>{props.current}</span>
+          {textArray.map((text, i) => (
+            <div key={i}>
+              <span className={classNames(styles.content)}>{text}</span>
+            </div>
+          ))}
         </div>
-        {props.current2 && (
-          <div>
-            <span className={classNames(styles.content2Row)}>{props.current2}</span>
-          </div>
-        )}
-      </div>
       )}
     </div>
   );

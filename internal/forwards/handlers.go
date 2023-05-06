@@ -52,11 +52,14 @@ func getForwardsTableHandler(c *gin.Context, db *sqlx.DB) {
 
 type forwardsTableRow struct {
 	// Alias of remote peer
-	Alias        null.String `json:"alias"`
-	ChannelTags  []tags.Tag  `json:"channelTags"`
-	PeerTags     []tags.Tag  `json:"peerTags"`
-	FirstNodeId  int         `json:"firstNodeId"`
-	SecondNodeId int         `json:"secondNodeId"`
+	Alias       null.String `json:"alias"`
+	ChannelTags []tags.Tag  `json:"channelTags"`
+	PeerTags    []tags.Tag  `json:"peerTags"`
+	// Aggregate of ChannelTags and PeerTags for easier filtering
+	Tags         []tags.Tag `json:"tags"`
+	TorqNodeId   int        `json:"torqNodeId"`
+	TorqNodeName string     `json:"torqNodeName"`
+	PeerNodeId   int        `json:"peerNodeId"`
 	// Database primary key of channel
 	ChannelID              *int   `json:"channelId"`
 	FundingTransactionHash string `json:"fundingTransactionHash"`
@@ -113,8 +116,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 	var sqlString = `
 		select
 			coalesce(scne.node_alias, LEFT(scn.public_key, 20)) as alias,
-			coalesce(c.first_node_id, 0) as first_node_id,
-			coalesce(c.second_node_id, 0) as second_node_id,
+			coalesce(fw.node_id, 0) as torq_node_id,
+			coalesce(ncd.name, '') as torq_node_name,
+			case when c.first_node_id = fw.node_id then c.second_node_id else c.first_node_id end as peer_node_id,
 			coalesce(c.channel_id, 0) as channel_id,
 			coalesce(c.funding_transaction_hash, 'Funding transaction missing') as funding_transaction_hash,
 			coalesce(c.funding_output_index, 0) as funding_output_index,
@@ -125,25 +129,19 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 			coalesce(scne.node_color, 'Color missing') as color,
 			coalesce(c.status_id, 3) <= 1 as open,
 			coalesce(c.status_id, 3) as status_id,
-
 			coalesce(ce.capacity::numeric, 0) as capacity,
-
 			coalesce(fw.amount_out, 0) as amount_out,
 			coalesce(fw.amount_in, 0) as amount_in,
 			coalesce((fw.amount_in + fw.amount_out), 0) as amount_total,
-
 			coalesce(fw.revenue_out, 0) as revenue_out,
 			coalesce(fw.revenue_in, 0) as revenue_in,
 			coalesce((fw.revenue_in + fw.revenue_out), 0) as revenue_total,
-
 			coalesce(fw.count_out, 0) as count_out,
 			coalesce(fw.count_in, 0) as count_in,
 			coalesce((fw.count_in + fw.count_out), 0) as count_total,
-
 			coalesce(round(fw.amount_out / ce.capacity::numeric, 2), 0) as turnover_out,
 			coalesce(round(fw.amount_in / ce.capacity::numeric, 2), 0) as turnover_in,
 			coalesce(round((fw.amount_in + fw.amount_out) / ce.capacity::numeric, 2), 0) as turnover_total
-
 		from channel as c
 		left join (
 			select channel_id, last(event->'capacity', time) as capacity
@@ -152,25 +150,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		    group by channel_id
 		) as ce on c.channel_id = ce.channel_id
 		left join (
-			select event_node_id, last(alias, timestamp) as node_alias, last(color, timestamp) as node_color
-			from node_event
-			group by event_node_id
-		) as fcne on c.first_node_id = fcne.event_node_id
-		left join (
-			select node_id, public_key
-			from node
-		) as fcn on c.first_node_id = fcn.node_id
-		left join (
-			select event_node_id, last(alias, timestamp) as node_alias, last(color, timestamp) as node_color
-			from node_event
-			group by event_node_id
-		) as scne on c.second_node_id = scne.event_node_id
-		left join (
-			select node_id, public_key
-			from node
-		) as scn on c.second_node_id = scn.node_id
-		left join (
-			select coalesce(o.channel_id, i.channel_id, 0) as channel_id,
+			select
+				coalesce(o.channel_id, i.channel_id, 0) as channel_id,
+			    coalesce(o.node_id, i.node_id) as node_id,
 				coalesce(o.amount,0) as amount_out,
 				coalesce(o.revenue,0) as revenue_out,
 				coalesce(o.count,0) as count_out,
@@ -178,28 +160,44 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 				coalesce(i.revenue,0) as revenue_in,
 				coalesce(i.count,0) as count_in
 			from (
-				select outgoing_channel_id channel_id,
-					   floor(sum(outgoing_amount_msat)/1000) as amount,
-					   floor(sum(fee_msat)/1000) as revenue,
-					   count(time) as count
-				from forward
-				where time::timestamp AT TIME ZONE $3 >= $1::timestamp AT TIME ZONE $3
-					and time::timestamp AT TIME ZONE $3 <= $2::timestamp AT TIME ZONE $3
-				group by outgoing_channel_id
+				select f.outgoing_channel_id as channel_id, f.node_id,
+					floor(sum(f.outgoing_amount_msat)/1000) as amount,
+					floor(sum(f.fee_msat)/1000) as revenue,
+					count(f.time) as count
+				from forward f
+				where f.time::timestamp AT TIME ZONE $3 >= $1::timestamp AT TIME ZONE $3
+					and f.time::timestamp AT TIME ZONE $3 <= $2::timestamp AT TIME ZONE $3
+				group by f.outgoing_channel_id, f.node_id
 			) as o
 			full outer join (
-				select incoming_channel_id as channel_id,
-					   floor(sum(incoming_amount_msat)/1000) as amount,
-					   floor(sum(fee_msat)/1000) as revenue,
-					   count(time) as count
-				from forward
-				where time::timestamp AT TIME ZONE $3 >= $1::timestamp AT TIME ZONE $3
-					and time::timestamp AT TIME ZONE $3 <= $2::timestamp AT TIME ZONE $3
-				group by incoming_channel_id
+				select f.incoming_channel_id as channel_id, f.node_id,
+					floor(sum(f.incoming_amount_msat)/1000) as amount,
+					floor(sum(f.fee_msat)/1000) as revenue,
+					count(f.time) as count
+				from forward f
+				where f.time::timestamp AT TIME ZONE $3 >= $1::timestamp AT TIME ZONE $3
+					and f.time::timestamp AT TIME ZONE $3 <= $2::timestamp AT TIME ZONE $3
+				group by f.incoming_channel_id, f.node_id
 			) as i
-			on i.channel_id = o.channel_id
+			on i.channel_id = o.channel_id and i.node_id = o.node_id
 		) as fw on fw.channel_id = c.channel_id
-		WHERE ( c.first_node_id = ANY($4) OR c.second_node_id = ANY($4) )
+		left join (
+			select event_node_id, last(alias, timestamp) as node_alias, last(color, timestamp) as node_color
+			from node_event
+			group by event_node_id
+		) as scne on case
+						when c.first_node_id = fw.node_id then c.second_node_id = scne.event_node_id
+						else c.first_node_id = scne.event_node_id
+					 end
+				left join (
+			select node_id, public_key
+			from node
+		) as scn on case
+						when c.first_node_id = fw.node_id then c.second_node_id = scn.node_id
+						else c.first_node_id = scn.node_id
+					end
+		left join node_connection_details ncd on ncd.node_id = fw.node_id
+		where ( c.first_node_id = any($4) OR c.second_node_id = any($4) )
 `
 
 	rows, err := db.Queryx(sqlString, fromTime, toTime, cache.GetSettings().PreferredTimeZone, pq.Array(nodeIds))
@@ -212,8 +210,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		c := &forwardsTableRow{}
 		err = rows.Scan(
 			&c.Alias,
-			&c.FirstNodeId,
-			&c.SecondNodeId,
+			&c.TorqNodeId,
+			&c.TorqNodeName,
+			&c.PeerNodeId,
 			&c.ChannelID,
 			&c.FundingTransactionHash,
 			&c.FundingOutputIndex,
@@ -251,7 +250,9 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 		if c.ChannelID != nil {
 			c.ChannelTags = tags.GetTagsByTagIds(cache.GetTagIdsByChannelId(*c.ChannelID))
 		}
-		c.PeerTags = tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(c.SecondNodeId))
+		c.PeerTags = tags.GetTagsByTagIds(cache.GetTagIdsByNodeId(c.PeerNodeId))
+
+		c.Tags = append(c.PeerTags, c.ChannelTags...)
 
 		// Append to the result
 		r = append(r, c)
