@@ -2200,21 +2200,34 @@ func processMoveFundsOffChain(ctx context.Context,
 	incomingNodeSettings := cache.GetNodeSettingsByNodeId(request.IncomingNodeId)
 
 	// Create the Route
-	route := lnrpc.Route{
-		TotalTimeLock: 39, // No idea if this should be above or
-		Hops: []*lnrpc.Hop{{
-			ChanId:           *lndShortChannelId,
-			AmtToForwardMsat: request.AmountMsat,
-			FeeMsat:          0,
-			PubKey:           incomingNodeSettings.PublicKey,
-			Expiry:           uint32(58000),
-		}},
-		TotalFeesMsat: 0,
-		TotalAmtMsat:  request.AmountMsat,
+	pubBytes, err := hex.DecodeString(incomingNodeSettings.PublicKey)
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	paymentAddr, err := hex.DecodeString(request.PaymentAddress)
+	if err != nil {
+		response.Error = err.Error()
+		return response
 	}
 
 	// Send the payment to the destination node
 	sourceRouterClient := routerrpc.NewRouterClient(sourceConn)
+	route, err := sourceRouterClient.BuildRoute(
+		ctx,
+		&routerrpc.BuildRouteRequest{
+			AmtMsat:        request.AmountMsat,
+			FinalCltvDelta: 40,
+			OutgoingChanId: *lndShortChannelId,
+			PaymentAddr:    paymentAddr,
+			HopPubkeys:     [][]byte{pubBytes},
+		})
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
 	//sourceClient := lnrpc.NewLightningClient(sourceConn)
 	//routeResp, err := sourceClient.QueryRoutes(ctx, &lnrpc.QueryRoutesRequest{
 	//	PubKey:            "",
@@ -2230,9 +2243,8 @@ func processMoveFundsOffChain(ctx context.Context,
 
 	routerPaymentRequest := routerrpc.SendToRouteRequest{
 		PaymentHash: request.RHash,
-		Route:       &route, //routeResp.Routes[0],
+		Route:       route.Route,
 	}
-	fmt.Printf("Route: %v\n", routerPaymentRequest)
 	htlcAttempts, err := sourceRouterClient.SendToRouteV2(ctx, &routerPaymentRequest)
 	if err != nil {
 		response.Error = err.Error()

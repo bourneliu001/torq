@@ -541,14 +541,15 @@ func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) (ligh
 			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
 		}
 		response = lnd.MoveFundsOffChain(request)
-		return response, nil
 	case core.CLN:
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
 		}
-		return lightning_helpers.MoveFundsOffChainResponse{}, UnsupportedOperationError
+		response = cln.MoveFundsOffChain(request)
 	}
-	response = cln.MoveFundsOffChain(request)
+	if response.Error != "" {
+		return lightning_helpers.MoveFundsOffChainResponse{}, errors.New(response.Error)
+	}
 	return response, nil
 }
 

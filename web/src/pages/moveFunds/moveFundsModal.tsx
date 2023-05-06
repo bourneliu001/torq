@@ -21,6 +21,7 @@ import { userEvents } from "../../utils/userEvents";
 import ErrorSummary from "../../components/errors/ErrorSummary";
 import { FormErrors } from "../../components/errors/errors";
 import { useMoveFundsOffChainMutation } from "./moveFundsApi";
+import { IsNumericOption } from "../../utils/typeChecking";
 
 const formatAmount = (amount: number) => format(",.0f")(amount);
 
@@ -95,8 +96,12 @@ function moveFundsModal() {
         return { label: node.name, value: node.nodeId };
       });
       setNodeConfigurationOptions(options);
-      setSelectedFromNodeId(options[0].value);
-      if (options?.length >= 2) setSelectedToNodeId(options[1].value);
+      if (options?.length >= 1 && !selectedFromNodeId && !options.find((c) => c.value === selectedFromNodeId)) {
+        setSelectedFromNodeId(options[0].value);
+      }
+      if (options?.length >= 2 && !selectedToNodeId && !options.find((c) => c.value === selectedToNodeId)) {
+        setSelectedToNodeId(options[1].value);
+      }
     }
   }, [nodeConfigurations]);
 
@@ -120,21 +125,21 @@ function moveFundsModal() {
           return 0;
         });
       setChannelOptions(options);
-      setSelectedChannelId(options[0].value);
+      if (options?.length >= 1 && !selectedChannelId && !options.find((c) => c.value === selectedChannelId)) {
+        setSelectedChannelId(options[0].value);
+      }
     }
-  }, [channelsResponse?.data?.length, selectedFromNodeId]);
+  }, [channelsResponse?.data, selectedFromNodeId]);
 
   useEffect(() => {
     if (moveChain === "move-funds-off-chain") {
       setMaxAmount(channelOptions?.find((c) => c.value === selectedChannelId)?.localBalance || 0);
-      setAmount(0);
     } else {
       const walletBalance =
         nodesWalletBalances?.find((w) => w.request.nodeId === selectedFromNodeId)?.confirmedBalance || 0;
       setMaxAmount(walletBalance);
-      setAmount(0);
     }
-  }, [selectedChannelId, channelOptions, moveChain, nodesWalletBalances?.length]);
+  }, [selectedChannelId, channelOptions, moveChain, nodesWalletBalances]);
 
   useEffect(() => {
     if (amount > maxAmount) {
@@ -181,9 +186,14 @@ function moveFundsModal() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO: Add track event
-    console.log("submit");
     if (moveChain === "move-funds-off-chain") {
+      track("Move Funds", {
+        moveFundsChain: moveChain,
+        moveFundsFrom: selectedFromNodeId,
+        moveFundsTo: selectedToNodeId,
+        moveFundsAmount: amount,
+        moFundsChannel: selectedChannelId,
+      });
       moveFundsOffChain({
         outgoingNodeId: selectedFromNodeId,
         incomingNodeId: selectedToNodeId,
@@ -235,9 +245,8 @@ function moveFundsModal() {
             intercomTarget={"move-funds-from-input"}
             label={t.from}
             onChange={(newValue: unknown) => {
-              const value = newValue as Option;
-              if (value && value.value != 0) {
-                setSelectedFromNodeId(value.value);
+              if (IsNumericOption(newValue)) {
+                setSelectedFromNodeId(newValue.value);
               }
             }}
             options={nodeConfigurationOptions}
@@ -248,9 +257,8 @@ function moveFundsModal() {
             intercomTarget={"move-funds-to-input"}
             label={t.to}
             onChange={(newValue: unknown) => {
-              const value = newValue as Option;
-              if (value && value.value != 0) {
-                setSelectedToNodeId(value.value);
+              if (IsNumericOption(newValue)) {
+                setSelectedToNodeId(newValue.value);
               }
             }}
             options={nodeConfigurationOptions}
