@@ -28,18 +28,17 @@ type InvoicePaymentResponseProps = {
 
 export function InvoicePaymentResponse(props: InvoicePaymentResponseProps) {
   const { t } = useTranslations();
-  const lastResponse = props.responses[props.responses.length - 1];
-  const [status, setStatus] = useState<InvoiceStatusType>("IN_FLIGHT");
+  const [status, setStatus] = useState<InvoiceStatusType>();
 
   useEffect(() => {
     if (props.paymentProcessingError !== "") {
       setStatus("FAILED");
     } else if (props.responses !== undefined && props.responses.length !== 0) {
-      setStatus(lastResponse.status);
+      setStatus(props.responses[props.responses.length - 1].paymentStatus);
     } else {
       setStatus("IN_FLIGHT");
     }
-  }, [props.responses, props.paymentProcessingError]);
+  }, [props.responses.length, props.paymentProcessingError]);
 
   return (
     <ProgressTabContainer>
@@ -56,11 +55,11 @@ export function InvoicePaymentResponse(props: InvoicePaymentResponseProps) {
       {status === "SUCCEEDED" && (
         <div>
           <DetailsContainer>
-            <DetailsRow label={"Fee:"}>{lastResponse.feePaidMsat / 1000}</DetailsRow>
+            <DetailsRow label={"Fee:"}>{props.responses[props.responses.length - 1].feePaidMsat / 1000}</DetailsRow>
           </DetailsContainer>
           <DetailsContainer>
-            <DetailsRowLinkAndCopy label={"Preimage:"} copy={lastResponse.preimage}>
-              {lastResponse.preimage}
+            <DetailsRowLinkAndCopy label={"Preimage:"} copy={props.responses[props.responses.length - 1].preimage}>
+              {props.responses[props.responses.length - 1].preimage}
             </DetailsRowLinkAndCopy>
           </DetailsContainer>
         </div>

@@ -84,9 +84,9 @@ function NewPaymentModal() {
 
   function onNewPaymentResponse(message: NewPaymentResponse) {
     setLnInvoiceResponses((prev) => [...prev, message]);
-    if (message.status === "SUCCEEDED") {
+    if (message.paymentStatus === "SUCCEEDED") {
       setProcessState(ProgressStepState.completed);
-    } else if (message.status === "FAILED") {
+    } else if (message.paymentStatus === "FAILED") {
       setPaymentProcessingError(PaymentProcessingErrors.get(message.failureReason) ?? "UNKNOWN_ERROR");
       setProcessState(ProgressStepState.error);
     }

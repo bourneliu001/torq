@@ -39,6 +39,7 @@ export type InvoiceStatusType = "SUCCEEDED" | "FAILED" | "IN_FLIGHT";
 export type NewPaymentResponse = {
   type: string;
   status: InvoiceStatusType;
+  paymentStatus: InvoiceStatusType;
   hash: string;
   preimage: string;
   paymentRequest: string;
