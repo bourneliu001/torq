@@ -9,6 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -66,6 +67,9 @@ func listAndProcessInvoices(ctx context.Context,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessInvoices")
+	defer span.End()
+
 	clnInvoices, err := client.ListInvoices(ctx, &cln.ListinvoicesRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing invoices for nodeId: %v", nodeSettings.NodeId)
@@ -90,6 +94,9 @@ func storeInvoices(ctx context.Context,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "storeInvoices")
+	defer span.End()
 
 	var lastImportAt *time.Time
 	err := db.Get(&lastImportAt, `SELECT MAX(created_on) FROM invoice WHERE node_id=$1`, nodeSettings.NodeId)

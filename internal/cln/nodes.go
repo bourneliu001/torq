@@ -10,6 +10,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -66,6 +68,8 @@ func listAndProcessNodes(ctx context.Context, db *sqlx.DB, client client_ListNod
 
 	for _, peerNodeId := range cache.GetPeerNodeIds(core.Bitcoin, nodeSettings.Network) {
 		peerNodeSettings := cache.GetNodeSettingsByNodeId(peerNodeId)
+		ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessNodes")
+		span.SetAttributes(attribute.String("publicKey", peerNodeSettings.PublicKey))
 		peerNodePk, err := hex.DecodeString(peerNodeSettings.PublicKey)
 		if err != nil {
 			return errors.Wrapf(err, "decoding peer public key for nodeId: %v", nodeSettings.NodeId)
@@ -77,7 +81,7 @@ func listAndProcessNodes(ctx context.Context, db *sqlx.DB, client client_ListNod
 			return errors.Wrapf(err, "listing nodes for nodeId: %v", nodeSettings.NodeId)
 		}
 
-		err = storeNodes(db, clnNodes.Nodes, peerNodeId, nodeSettings)
+		err = storeNodes(ctx, db, clnNodes.Nodes, peerNodeId, nodeSettings)
 		if err != nil {
 			return errors.Wrapf(err, "storing nodes for nodeId: %v", nodeSettings.NodeId)
 		}
@@ -86,14 +90,19 @@ func listAndProcessNodes(ctx context.Context, db *sqlx.DB, client client_ListNod
 			log.Info().Msgf("Initial import of nodes is done for nodeId: %v", nodeSettings.NodeId)
 			cache.SetActiveNodeServiceState(serviceType, nodeSettings.NodeId)
 		}
+		span.End()
 	}
 	return nil
 }
 
-func storeNodes(db *sqlx.DB,
+func storeNodes(ctx context.Context,
+	db *sqlx.DB,
 	clnNodes []*cln.ListnodesNodes,
 	eventNodeId int,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeNodes")
+	defer span.End()
 
 	for _, clnNode := range clnNodes {
 		if clnNode == nil {

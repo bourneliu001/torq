@@ -9,6 +9,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -70,6 +72,9 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessForwards")
+	defer span.End()
+
 	var unprocessedShortChannelIds []string
 	var closedChannelIds []int
 	channels := cache.GetChannelSettingsByNodeId(nodeSettings.NodeId)
@@ -87,29 +92,44 @@ func listAndProcessForwards(ctx context.Context, db *sqlx.DB, client client_List
 		}
 	}
 
+	ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessForwards")
+	span.SetAttributes(attribute.String("Status", cln.ListforwardsRequest_SETTLED.String()))
 	err := processForwards(ctx, db, client, serviceType,
 		cln.ListforwardsRequest_SETTLED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrapf(err, "processing of forwards failed")
 	}
+	span.End()
+
 	if cache.GetNodeConnectionDetails(nodeSettings.NodeId).CustomSettings.
 		HasNodeConnectionDetailCustomSettings(core.ImportHtlcEvents) {
 
+		ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessForwards")
+		span.SetAttributes(attribute.String("Status", cln.ListforwardsRequest_OFFERED.String()))
 		err = processForwards(ctx, db, client, serviceType,
 			cln.ListforwardsRequest_OFFERED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
+		span.End()
+
+		ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessForwards")
+		span.SetAttributes(attribute.String("Status", cln.ListforwardsRequest_LOCAL_FAILED.String()))
 		err = processForwards(ctx, db, client, serviceType,
 			cln.ListforwardsRequest_LOCAL_FAILED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
+		span.End()
+
+		ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessForwards")
+		span.SetAttributes(attribute.String("Status", cln.ListforwardsRequest_FAILED.String()))
 		err = processForwards(ctx, db, client, serviceType,
 			cln.ListforwardsRequest_FAILED, unprocessedShortChannelIds, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrapf(err, "processing of forwards failed")
 		}
+		span.End()
 	}
 	for _, closedChannelId := range closedChannelIds {
 		channelSetting := cache.GetChannelSettingByChannelId(closedChannelId)
@@ -140,38 +160,47 @@ func processForwards(ctx context.Context,
 	bootStrapping bool) error {
 
 	for ix, shortChannelId := range unprocessedShortChannelIds {
+		ctx, span := otel.Tracer(name).Start(ctx, "processForwards")
+		span.SetAttributes(attribute.String("InChannel-ShortChannelId", shortChannelId))
 		clnForwards, err := client.ListForwards(ctx, &cln.ListforwardsRequest{InChannel: &unprocessedShortChannelIds[ix], Status: &clnStatus})
 		if err != nil {
 			return errors.Wrapf(err, "listing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
-
-		err = storeForwards(db, clnStatus, clnForwards.Forwards, shortChannelId, "", nodeSettings)
+		err = storeForwards(ctx, db, clnStatus, clnForwards.Forwards, shortChannelId, "", nodeSettings)
 		if err != nil {
 			return errors.Wrapf(err, "storing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
+		span.End()
 
+		ctx, span = otel.Tracer(name).Start(ctx, "processForwards")
+		span.SetAttributes(attribute.String("OutChannel-ShortChannelId", shortChannelId))
 		clnForwards, err = client.ListForwards(ctx, &cln.ListforwardsRequest{OutChannel: &unprocessedShortChannelIds[ix], Status: &clnStatus})
 		if err != nil {
 			return errors.Wrapf(err, "listing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
 
-		err = storeForwards(db, clnStatus, clnForwards.Forwards, "", shortChannelId, nodeSettings)
+		err = storeForwards(ctx, db, clnStatus, clnForwards.Forwards, "", shortChannelId, nodeSettings)
 		if err != nil {
 			return errors.Wrapf(err, "storing %v forwards for nodeId: %v", clnStatus.String(), nodeSettings.NodeId)
 		}
 		if bootStrapping {
 			cache.SetInitializingNodeServiceState(serviceType, nodeSettings.NodeId)
 		}
+		span.End()
 	}
 	return nil
 }
 
-func storeForwards(db *sqlx.DB,
+func storeForwards(ctx context.Context,
+	db *sqlx.DB,
 	clnStatus cln.ListforwardsRequest_ListforwardsStatus,
 	clnForwards []*cln.ListforwardsForwards,
 	incomingShortChannelId string,
 	outgoingShortChannelId string,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeForwards")
+	defer span.End()
 
 	var channelId int
 	if incomingShortChannelId != "" {

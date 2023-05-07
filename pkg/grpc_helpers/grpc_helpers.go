@@ -50,18 +50,21 @@ func GetClientMetrics() *grpcprom.ClientMetrics {
 }
 
 func GetLoggingOptions() []logging.Option {
-	logTraceID := func(ctx context.Context) logging.Fields {
+	return []logging.Option{
+		logging.WithFieldsFromContext(GetFieldsFromContext()),
+		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+		// Add any other option (check functions starting with logging.With).
+	}
+}
+
+func GetFieldsFromContext() func(ctx context.Context) logging.Fields {
+	exemplarFromContext := func(ctx context.Context) logging.Fields {
 		if span := trace.SpanContextFromContext(ctx); span.IsSampled() {
 			return logging.Fields{"traceID", span.TraceID().String()}
 		}
 		return nil
 	}
-
-	return []logging.Option{
-		logging.WithFieldsFromContext(logTraceID),
-		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
-		// Add any other option (check functions starting with logging.With).
-	}
+	return exemplarFromContext
 }
 
 func GetExemplarFromContext() func(ctx context.Context) prometheus.Labels {

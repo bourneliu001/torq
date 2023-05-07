@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -58,17 +59,22 @@ func SubscribeAndStoreClosedChannels(ctx context.Context,
 	}
 }
 
-func listAndProcessClosedChannels(ctx context.Context, db *sqlx.DB, client client_ListClosedChannels,
+func listAndProcessClosedChannels(ctx context.Context,
+	db *sqlx.DB,
+	client client_ListClosedChannels,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessClosedChannels")
+	defer span.End()
 
 	clnChannels, err := client.ListClosedChannels(ctx, &cln.ListclosedchannelsRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storeClosedChannels(db, clnChannels.Closedchannels, nodeSettings)
+	err = storeClosedChannels(ctx, db, clnChannels.Closedchannels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
@@ -80,9 +86,13 @@ func listAndProcessClosedChannels(ctx context.Context, db *sqlx.DB, client clien
 	return nil
 }
 
-func storeClosedChannels(db *sqlx.DB,
+func storeClosedChannels(ctx context.Context,
+	db *sqlx.DB,
 	clnChannels []*cln.ListclosedchannelsClosedchannels,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeClosedChannels")
+	defer span.End()
 
 	for _, clnChannel := range clnChannels {
 		if clnChannel != nil {

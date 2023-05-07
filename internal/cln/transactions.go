@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -58,17 +59,22 @@ func SubscribeAndStoreTransactions(ctx context.Context,
 	}
 }
 
-func listAndProcessTransactions(ctx context.Context, db *sqlx.DB, client client_ListTransactions,
+func listAndProcessTransactions(ctx context.Context,
+	db *sqlx.DB,
+	client client_ListTransactions,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessTransactions")
+	defer span.End()
 
 	clnTransactions, err := client.ListTransactions(ctx, &cln.ListtransactionsRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing transactions for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storeTransactions(db, clnTransactions.Transactions, nodeSettings)
+	err = storeTransactions(ctx, db, clnTransactions.Transactions, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing transactions for nodeId: %v", nodeSettings.NodeId)
 	}
@@ -80,9 +86,13 @@ func listAndProcessTransactions(ctx context.Context, db *sqlx.DB, client client_
 	return nil
 }
 
-func storeTransactions(db *sqlx.DB,
+func storeTransactions(ctx context.Context,
+	db *sqlx.DB,
 	clnTransactions []*cln.ListtransactionsTransactions,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeTransactions")
+	defer span.End()
 
 	blockHeight, err := getMaximumBlockHeight(db, nodeSettings)
 	if err != nil {

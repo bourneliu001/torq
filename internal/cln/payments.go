@@ -9,6 +9,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -67,21 +69,31 @@ func listAndProcessPayments(ctx context.Context,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessPayments")
+	span.SetAttributes(attribute.String("status", cln.ListsendpaysRequest_COMPLETE.String()))
 	err := processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_COMPLETE, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrap(err, "processing completed payments")
 	}
+	span.End()
 
 	if cache.GetNodeConnectionDetails(nodeSettings.NodeId).CustomSettings.
 		HasNodeConnectionDetailCustomSettings(core.ImportFailedPayments) {
+		ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessPayments")
+		span.SetAttributes(attribute.String("status", cln.ListsendpaysRequest_FAILED.String()))
 		err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_FAILED, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrap(err, "processing failed payments")
 		}
+		span.End()
+
+		ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessPayments")
+		span.SetAttributes(attribute.String("status", cln.ListsendpaysRequest_PENDING.String()))
 		err = processPayments(ctx, db, client, serviceType, cln.ListsendpaysRequest_PENDING, nodeSettings, bootStrapping)
 		if err != nil {
 			return errors.Wrap(err, "processing pending payments")
 		}
+		span.End()
 	}
 
 	if bootStrapping {
@@ -106,7 +118,7 @@ func processPayments(ctx context.Context,
 		return errors.Wrapf(err, "listing payments for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storePayments(db, clnPayments.Payments, serviceType, nodeSettings, bootStrapping)
+	err = storePayments(ctx, db, clnPayments.Payments, serviceType, nodeSettings, bootStrapping)
 	if err != nil {
 		return errors.Wrap(err, "storing payments")
 	}
@@ -116,11 +128,15 @@ func processPayments(ctx context.Context,
 	return nil
 }
 
-func storePayments(db *sqlx.DB,
+func storePayments(ctx context.Context,
+	db *sqlx.DB,
 	clnPayments []*cln.ListsendpaysPayments,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storePayments")
+	defer span.End()
 
 	var lastCreatedAt *time.Time
 	err := db.Get(&lastCreatedAt, `SELECT MAX(creation_timestamp) FROM payment WHERE node_id=$1`, nodeSettings.NodeId)
