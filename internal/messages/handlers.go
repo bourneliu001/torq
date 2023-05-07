@@ -38,7 +38,7 @@ func signMessageHandler(c *gin.Context) {
 		return
 	}
 
-	response, err := signMessage(signMsgReq)
+	response, err := signMessage(c.Request.Context(), signMsgReq)
 	if err != nil {
 		server_errors.WrapLogAndSendServerError(c, err, "Sign message")
 		return
@@ -55,7 +55,7 @@ func verifyMessageHandler(c *gin.Context) {
 		return
 	}
 
-	response, err := verifyMessage(verifyMsgReq)
+	response, err := verifyMessage(c.Request.Context(), verifyMsgReq)
 	if err != nil {
 		serr := server_errors.ServerError{}
 		// TODO: Replace with error codes

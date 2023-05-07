@@ -1,7 +1,6 @@
 package automation
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/cockroachdb/errors"
@@ -33,7 +32,7 @@ func rebalanceHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	response := workflows.RebalanceRequests(context.Background(), db, rr, rr.NodeId)
+	response := workflows.RebalanceRequests(c.Request.Context(), db, rr, rr.NodeId)
 	if len(response) > 0 && response[0].Error != "" {
 		server_errors.SendBadRequest(c, response[0].Error)
 		return

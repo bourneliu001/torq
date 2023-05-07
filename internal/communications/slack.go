@@ -79,7 +79,7 @@ func processEvents(ctx context.Context, socketClient *socketmode.Client, db *sql
 					continue
 				}
 				socketClient.Ack(*event.Request)
-				handleEventMessage(db, socketClient, eventsAPIEvent)
+				handleEventMessage(ctx, db, socketClient, eventsAPIEvent)
 			case socketmode.EventTypeSlashCommand:
 				// Just like before, type cast to the correct event type, this time a SlashEvent
 				command, ok := event.Data.(slack.SlashCommand)
@@ -88,7 +88,7 @@ func processEvents(ctx context.Context, socketClient *socketmode.Client, db *sql
 					continue
 				}
 				socketClient.Ack(*event.Request)
-				handleSlashCommand(db, command)
+				handleSlashCommand(ctx, db, command)
 			default:
 				log.Trace().Msgf("Could not type cast the event.Type: %v", event.Type)
 				log.Trace().Msgf("Could not type cast the event.Data: %v", event.Data)
@@ -115,7 +115,7 @@ func SendSlackBotMessages(botMessage MessageForBot) {
 	}
 }
 
-func handleSlashCommand(db *sqlx.DB, command slack.SlashCommand) {
+func handleSlashCommand(ctx context.Context, db *sqlx.DB, command slack.SlashCommand) {
 	messageForBot := MessageForBot{
 		Slack: MessageForSlack{
 			Channel: command.ChannelID,
@@ -123,10 +123,10 @@ func handleSlashCommand(db *sqlx.DB, command slack.SlashCommand) {
 			Color:   "#283B4C",
 		},
 	}
-	HandleMessage(db, messageForBot, command.Text, command.Command[1:], CommunicationSlack)
+	HandleMessage(ctx, db, messageForBot, command.Text, command.Command[1:], CommunicationSlack)
 }
 
-func handleEventMessage(db *sqlx.DB, socketClient *socketmode.Client, event slackevents.EventsAPIEvent) {
+func handleEventMessage(ctx context.Context, db *sqlx.DB, socketClient *socketmode.Client, event slackevents.EventsAPIEvent) {
 	if event.Type != slackevents.CallbackEvent {
 		return
 	}
@@ -153,7 +153,7 @@ func handleEventMessage(db *sqlx.DB, socketClient *socketmode.Client, event slac
 	eventText := strings.TrimSpace(ev.Text)
 	command := extractCommand(eventText)
 	if command != "" && strings.LastIndex(eventText, command) != -1 {
-		HandleMessage(db, messageForBot,
+		HandleMessage(ctx, db, messageForBot,
 			strings.TrimSpace(eventText[strings.LastIndex(eventText, command)+len(command):]),
 			command, CommunicationSlack)
 	}

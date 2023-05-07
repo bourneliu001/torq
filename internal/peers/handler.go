@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -94,7 +95,7 @@ func connectNewPeerHandler(c *gin.Context, db *sqlx.DB) {
 	pubKey := s[0]
 	host := s[1]
 
-	_, err := lightning.ConnectPeer(req.NodeId, pubKey, host)
+	_, err := lightning.ConnectPeer(c.Request.Context(), req.NodeId, pubKey, host)
 	if err != nil {
 		server_errors.WrapLogAndSendServerError(c, err, "Error connecting to peer.")
 		return
@@ -130,7 +131,7 @@ func disconnectPeerHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	if address == nil || *address == "" {
-		host, err := getHostFromPeer(req.TorqNodeId, req.NodeId)
+		host, err := getHostFromPeer(c.Request.Context(), req.TorqNodeId, req.NodeId)
 		if err != nil {
 			server_errors.WrapLogAndSendServerError(c, err, "Getting host from peer.")
 			return
@@ -139,7 +140,7 @@ func disconnectPeerHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	disconnected := core.NodeConnectionStatusDisconnected
-	requestFailedCurrentlyDisconnected, err := lightning.DisconnectPeer(req.TorqNodeId, req.NodeId)
+	requestFailedCurrentlyDisconnected, err := lightning.DisconnectPeer(c.Request.Context(), req.TorqNodeId, req.NodeId)
 	if err != nil {
 		if requestFailedCurrentlyDisconnected {
 			err = settings.AddNodeConnectionHistory(db, req.TorqNodeId, req.NodeId, address, setting, &disconnected)
@@ -175,7 +176,7 @@ func reconnectPeerHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	if address == nil || *address == "" {
-		host, err := getHostFromPeer(req.TorqNodeId, req.NodeId)
+		host, err := getHostFromPeer(c.Request.Context(), req.TorqNodeId, req.NodeId)
 		if err != nil {
 			server_errors.WrapLogAndSendServerError(c, err, "Getting host from peer.")
 			return
@@ -185,7 +186,7 @@ func reconnectPeerHandler(c *gin.Context, db *sqlx.DB) {
 
 	connected := core.NodeConnectionStatusConnected
 	publicKey := cache.GetNodeSettingsByNodeId(req.NodeId).PublicKey
-	requestFailCurrentlyConnected, err := lightning.ConnectPeer(req.TorqNodeId, publicKey, *address)
+	requestFailCurrentlyConnected, err := lightning.ConnectPeer(c.Request.Context(), req.TorqNodeId, publicKey, *address)
 	if err != nil {
 		if requestFailCurrentlyConnected {
 			err = settings.AddNodeConnectionHistory(db, req.TorqNodeId, req.NodeId, address, setting, &connected)
@@ -236,7 +237,7 @@ func updatePeer(c *gin.Context, db *sqlx.DB) {
 	}
 
 	if address == nil || *address == "" {
-		host, err := getHostFromPeer(req.TorqNodeId, req.NodeId)
+		host, err := getHostFromPeer(c.Request.Context(), req.TorqNodeId, req.NodeId)
 		if err != nil {
 			server_errors.WrapLogAndSendServerError(c, err, "Getting host from peer.")
 			return
@@ -252,9 +253,9 @@ func updatePeer(c *gin.Context, db *sqlx.DB) {
 
 }
 
-func getHostFromPeer(connectionDetailsNodeId int, nodeId int) (string, error) {
+func getHostFromPeer(ctx context.Context, connectionDetailsNodeId int, nodeId int) (string, error) {
 	nodeSettings := cache.GetNodeSettingsByNodeId(nodeId)
-	peers, err := lightning.ListPeers(connectionDetailsNodeId, true)
+	peers, err := lightning.ListPeers(ctx, connectionDetailsNodeId, true)
 	if err != nil {
 		return "", errors.Wrap(err, "Getting list of peers.")
 	}

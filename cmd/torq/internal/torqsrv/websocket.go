@@ -1,6 +1,7 @@
 package torqsrv
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -42,7 +43,8 @@ func processWsReq(webSocketResponseChannel chan<- interface{}, req wsRequest) {
 			break
 		}
 		req.NewPaymentRequest.ProgressReportChannel = webSocketResponseChannel
-		_, err := lightning.NewPayment(*req.NewPaymentRequest)
+		// TODO FIXME OTEL instrumentation missing
+		_, err := lightning.NewPayment(context.Background(), *req.NewPaymentRequest)
 		if err != nil {
 			sendError(err, req, webSocketResponseChannel)
 		}

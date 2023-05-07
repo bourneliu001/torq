@@ -164,7 +164,7 @@ func Notify(ctx context.Context, db *sqlx.DB) {
 						torqNodeSettings.NodeId)
 					continue
 				}
-				newInformation, err := lightning.GetInformation(torqNodeSettings.NodeId)
+				newInformation, err := lightning.GetInformation(ctx, torqNodeSettings.NodeId)
 				if err != nil {
 					if errors.Is(err, lightning.ServiceInactiveError) {
 						_, exists := informationResponses[nodeIdType(torqNodeSettings.NodeId)]
@@ -375,7 +375,8 @@ func sendBotMessages(communicationMessage string, communicationDestinations []Co
 	}
 }
 
-func HandleMessage(db *sqlx.DB,
+func HandleMessage(ctx context.Context,
+	db *sqlx.DB,
 	messageForBot MessageForBot,
 	publicKeyFromChannel string,
 	commandFromChannel string,
@@ -385,7 +386,7 @@ func HandleMessage(db *sqlx.DB,
 	case VectorButton:
 		fallthrough
 	case StatusButton:
-		messageForBot = processStatusRequest(db, communicationTargetType, publicKeyFromChannel, messageForBot)
+		messageForBot = processStatusRequest(ctx, db, communicationTargetType, publicKeyFromChannel, messageForBot)
 	case SettingsButton:
 		if messageForBot.IsTelegram() {
 			SendNodeSettingsMenu(db, communicationTargetType, messageForBot)
@@ -412,7 +413,8 @@ func HandleMessage(db *sqlx.DB,
 	}
 }
 
-func HandleButton(db *sqlx.DB,
+func HandleButton(ctx context.Context,
+	db *sqlx.DB,
 	messageForBot MessageForBot,
 	commandFromChannel string,
 	messageFromChannel string,
@@ -422,7 +424,7 @@ func HandleButton(db *sqlx.DB,
 	case VectorButton:
 		fallthrough
 	case StatusButton:
-		messageForBot = processStatusRequest(db, communicationTargetType, messageFromChannel, messageForBot)
+		messageForBot = processStatusRequest(ctx, db, communicationTargetType, messageFromChannel, messageForBot)
 	case SettingsButton:
 		messageForBot = processSettingsRequest(db, communicationTargetType, messageFromChannel, messageForBot)
 	case RegisterButton:
@@ -624,7 +626,8 @@ func processUnregisterRequest(db *sqlx.DB,
 	return messageForBot
 }
 
-func processStatusRequest(db *sqlx.DB,
+func processStatusRequest(ctx context.Context,
+	db *sqlx.DB,
 	communicationTargetType CommunicationTargetType,
 	publicKey string,
 	messageForBot MessageForBot) MessageForBot {
@@ -636,7 +639,7 @@ func processStatusRequest(db *sqlx.DB,
 		return messageForBot
 	}
 	for _, nodeId := range nodeIds {
-		information, err := lightning.GetInformation(nodeId)
+		information, err := lightning.GetInformation(ctx, nodeId)
 		if err != nil {
 			messageForBot.Error = err.Error()
 			messageForBot.Message = "Lightning node is offline."

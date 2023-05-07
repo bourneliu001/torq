@@ -199,7 +199,7 @@ func updateWorkflowHandler(c *gin.Context, db *sqlx.DB) {
 			log.Error().Err(err).Msg("Could not obtain workflowIds for WorkflowNodeCronTrigger")
 		}
 		if slices.Contains(workflowIds, req.WorkflowId) {
-			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			ctxWithTimeout, cancel := context.WithTimeout(c.Request.Context(), 1*time.Minute)
 			defer cancel()
 			success := cache.InactivateCoreService(ctxWithTimeout, services_helpers.CronService)
 			if success {

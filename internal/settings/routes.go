@@ -59,12 +59,13 @@ type ConnectionDetails struct {
 	CustomSettings    core.NodeConnectionDetailCustomSettings
 }
 
-func setAllLndServices(nodeId int,
+func setAllLndServices(ctx context.Context,
+	nodeId int,
 	lndActive bool,
 	customSettings core.NodeConnectionDetailCustomSettings,
 	pingSystem core.PingSystem) bool {
 
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	if lndActive {
@@ -73,8 +74,8 @@ func setAllLndServices(nodeId int,
 	return cache.InactivateNodeService(ctxWithTimeout, nodeId)
 }
 
-func setService(serviceType services_helpers.ServiceType, nodeId int, active bool) bool {
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+func setService(ctx context.Context, serviceType services_helpers.ServiceType, nodeId int, active bool) bool {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	if active {
@@ -221,19 +222,22 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 			return
 		}
 
-		publicKey, chain, network, err = getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		publicKey, chain, network, err =
+			getInformationFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 		if err != nil {
 			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
 			return
 		}
 
-		ncd.NodeStartDate, err = getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		ncd.NodeStartDate, err =
+			getNodeStartDateFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 		if err != nil {
 			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
 			return
 		}
 
-		canSignMessages, err = getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+		canSignMessages, err =
+			getSignMessagesPermissionFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 		if err != nil {
 			server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
 			return
@@ -277,7 +281,7 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 		}
 
 		publicKey, chain, network, err =
-			getInformationFromClnNode(*ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
+			getInformationFromClnNode(c.Request.Context(), *ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
 		if err != nil {
 			server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from CLN Node"), "connect", map[string]string{"implementation": "CLN"})
 			return
@@ -336,7 +340,7 @@ func addNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 	cache.SetTorqNode(ncd.NodeId, ncd.Name, ncd.Status, publicKey, chain, network)
 
 	if ncd.Status == core.Active {
-		ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		ctxWithTimeout, cancel := context.WithTimeout(c.Request.Context(), 1*time.Minute)
 		defer cancel()
 
 		if !cache.ActivateLndService(ctxWithTimeout, nodeId, ncd.CustomSettings, ncd.PingSystem) {
@@ -441,7 +445,8 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 	if detailsUpdate {
 		switch ncd.Implementation {
 		case core.LND:
-			publicKey, chain, network, err := getInformationFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+			publicKey, chain, network, err :=
+				getInformationFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 			if err != nil {
 				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from LND Node"), "connect", map[string]string{"implementation": "LND"})
 				return
@@ -459,7 +464,8 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 
 			// Get node start date from LND if user didn't give it manually
 			if ncd.NodeStartDate == nil {
-				nodeStartDate, err := getNodeStartDateFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+				nodeStartDate, err :=
+					getNodeStartDateFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 				if err != nil {
 					server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get node start date from LND Node"), "connect", map[string]string{"implementation": "LND"})
 					return
@@ -467,7 +473,8 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 				ncd.NodeStartDate = nodeStartDate
 			}
 
-			canSignMessages, err := getSignMessagesPermissionFromLndNode(*ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
+			canSignMessages, err :=
+				getSignMessagesPermissionFromLndNode(c.Request.Context(), *ncd.GRPCAddress, ncd.TLSDataBytes, ncd.MacaroonDataBytes)
 			if err != nil {
 				server_errors.WrapLogAndSendServerError(c, err, "Verify sign messages macaroon ability from gRPC")
 				return
@@ -478,7 +485,7 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 			}
 		case core.CLN:
 			publicKey, chain, network, err :=
-				getInformationFromClnNode(*ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
+				getInformationFromClnNode(c.Request.Context(), *ncd.GRPCAddress, ncd.CertificateDataBytes, ncd.KeyDataBytes, ncd.CaCertificateDataBytes)
 			if err != nil {
 				server_errors.LogAndSendServerErrorCode(c, errors.Wrap(err, "Get info from CLN Node"), "connect", map[string]string{"implementation": "CLN"})
 				return
@@ -528,7 +535,7 @@ func setNodeConnectionDetailsHandler(c *gin.Context, db *sqlx.DB) {
 	cache.SetTorqNode(ncd.NodeId, ncd.Name, ncd.Status,
 		nodeSettings.PublicKey, nodeSettings.Chain, nodeSettings.Network)
 
-	success := setAllLndServices(ncd.NodeId, ncd.Status == core.Active, ncd.CustomSettings, ncd.PingSystem)
+	success := setAllLndServices(c.Request.Context(), ncd.NodeId, ncd.Status == core.Active, ncd.CustomSettings, ncd.PingSystem)
 	if !success {
 		server_errors.LogAndSendServerError(c, errors.New("Some services did not start correctly"))
 		return
@@ -626,7 +633,7 @@ func setNodeConnectionDetailsStatusHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	if core.Status(statusId) != core.Active {
-		success := setAllLndServices(nodeId, false, 0, 0)
+		success := setAllLndServices(c.Request.Context(), nodeId, false, 0, 0)
 		if !success {
 			server_errors.LogAndSendServerError(c, errors.New("Some services did not start correctly"))
 			return
@@ -640,7 +647,7 @@ func setNodeConnectionDetailsStatusHandler(c *gin.Context, db *sqlx.DB) {
 		server_errors.LogAndSendServerError(c, err)
 		return
 	}
-	success := setAllLndServices(nodeId, true, ncd.CustomSettings, ncd.PingSystem)
+	success := setAllLndServices(c.Request.Context(), nodeId, true, ncd.CustomSettings, ncd.PingSystem)
 	if !success {
 		server_errors.LogAndSendServerError(c, errors.New("Some services did not start correctly"))
 		return
@@ -683,7 +690,7 @@ func setNodeConnectionDetailsPingSystemHandler(c *gin.Context, db *sqlx.DB) {
 		return
 	}
 
-	done := setService(*services_helpers.GetPingSystemServiceType(ps), nodeId, s == core.Active)
+	done := setService(c.Request.Context(), *services_helpers.GetPingSystemServiceType(ps), nodeId, s == core.Active)
 	if !done {
 		server_errors.LogAndSendServerError(c, errors.New("Service failed please try again."))
 		return
@@ -722,7 +729,7 @@ func setNodeConnectionDetailsCustomSettingHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	ncd := cache.GetNodeConnectionDetails(nodeId)
-	done := setService(
+	done := setService(c.Request.Context(),
 		*services_helpers.GetNodeConnectionDetailServiceType(ncd.Implementation, cs), nodeId, s == core.Active)
 	if !done {
 		server_errors.LogAndSendServerError(c, errors.New("Service failed please try again."))
@@ -786,7 +793,7 @@ func setNodeConnectionDetailsCustomSettingsHandler(c *gin.Context, db *sqlx.DB) 
 	allSuccess := true
 	for active, serviceTypes := range services {
 		for _, serviceType := range serviceTypes {
-			done := setService(serviceType, nodeId, active)
+			done := setService(c.Request.Context(), serviceType, nodeId, active)
 			if !done {
 				allSuccess = false
 			}
@@ -858,7 +865,7 @@ func GetConnectionDetailsById(db *sqlx.DB, nodeId int) (ConnectionDetails, error
 	return cd, nil
 }
 
-func getInformationFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile []byte) (
+func getInformationFromLndNode(ctx context.Context, grpcAddress string, tlsCert []byte, macaroonFile []byte) (
 	string, core.Chain, core.Network, error) {
 	conn, err := lnd_connect.Connect(grpcAddress, tlsCert, macaroonFile)
 	if err != nil {
@@ -873,7 +880,6 @@ func getInformationFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile 
 	}(conn)
 
 	client := lnrpc.NewLightningClient(conn)
-	ctx := context.Background()
 	info, err := client.GetInfo(ctx, &lnrpc.GetInfoRequest{})
 	if err != nil {
 		return "", 0, 0, errors.Wrap(err, "Obtaining information from LND")
@@ -910,8 +916,12 @@ func getInformationFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile 
 	return info.IdentityPubkey, chain, network, nil
 }
 
-func getInformationFromClnNode(grpcAddress string, certificate []byte, key []byte, caCertificate []byte) (
-	string, core.Chain, core.Network, error) {
+func getInformationFromClnNode(ctx context.Context,
+	grpcAddress string,
+	certificate []byte,
+	key []byte,
+	caCertificate []byte) (string, core.Chain, core.Network, error) {
+
 	conn, err := cln_connect.Connect(grpcAddress, certificate, key, caCertificate)
 	if err != nil {
 		return "", 0, 0, errors.Wrap(err,
@@ -925,7 +935,6 @@ func getInformationFromClnNode(grpcAddress string, certificate []byte, key []byt
 	}(conn)
 
 	client := cln.NewNodeClient(conn)
-	ctx := context.Background()
 	info, err := client.Getinfo(ctx, &cln.GetinfoRequest{})
 	if err != nil {
 		return "", 0, 0, errors.Wrap(err, "Obtaining information from LND")
@@ -951,7 +960,11 @@ func getInformationFromClnNode(grpcAddress string, certificate []byte, key []byt
 	return hex.EncodeToString(info.Id), chain, network, nil
 }
 
-func getSignMessagesPermissionFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile []byte) (bool, error) {
+func getSignMessagesPermissionFromLndNode(ctx context.Context,
+	grpcAddress string,
+	tlsCert []byte,
+	macaroonFile []byte) (bool, error) {
+
 	conn, err := lnd_connect.Connect(grpcAddress, tlsCert, macaroonFile)
 	if err != nil {
 		return false, errors.Wrap(err,
@@ -965,8 +978,6 @@ func getSignMessagesPermissionFromLndNode(grpcAddress string, tlsCert []byte, ma
 	}(conn)
 
 	client := lnrpc.NewLightningClient(conn)
-	ctx := context.Background()
-
 	signMsgReq := lnrpc.SignMessageRequest{
 		Msg: []byte("test"),
 	}
@@ -992,7 +1003,11 @@ func processFile(file *multipart.FileHeader) (fileName *string, data []byte, err
 	return fileName, data, nil
 }
 
-func getNodeStartDateFromLndNode(grpcAddress string, tlsCert []byte, macaroonFile []byte) (*time.Time, error) {
+func getNodeStartDateFromLndNode(ctx context.Context,
+	grpcAddress string,
+	tlsCert []byte,
+	macaroonFile []byte) (*time.Time, error) {
+
 	conn, err := lnd_connect.Connect(grpcAddress, tlsCert, macaroonFile)
 	if err != nil {
 		return nil, errors.Wrap(err,
@@ -1006,8 +1021,6 @@ func getNodeStartDateFromLndNode(grpcAddress string, tlsCert []byte, macaroonFil
 	}(conn)
 
 	client := lnrpc.NewLightningClient(conn)
-	ctx := context.Background()
-
 	onChainTxDetails, err := client.GetTransactions(ctx, &lnrpc.GetTransactionsRequest{})
 
 	if err != nil {

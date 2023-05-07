@@ -20,7 +20,7 @@ import (
 	"github.com/urfave/cli/v2/altsrc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
-	stdout "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -194,6 +194,15 @@ func main() {
 			Name:  "otel.exporter.endpoint",
 			Usage: "endpoint for jaeger",
 		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.path",
+			Usage: "path for the exporter",
+		}),
+		altsrc.NewFloat64Flag(&cli.Float64Flag{
+			Name:  "otel.sampler.fraction",
+			Value: 0.10,
+			Usage: "Sampler ratio default: 0.10 or 10%",
+		}),
 	}
 
 	start := &cli.Command{
@@ -211,28 +220,42 @@ func main() {
 			switch strings.ToLower(c.String("otel.exporter.type")) {
 			case "stdout":
 				// Set up OTLP tracing (stdout for debug).
-				exporter, err = stdout.New(stdout.WithPrettyPrint())
+				exporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
 				if err != nil {
 					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
 					os.Exit(1)
 				}
+				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
 			case "jaeger":
 				exporter, err = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(c.String("otel.exporter.endpoint"))))
 				if err != nil {
 					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
 					os.Exit(1)
 				}
+				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
+			case "file":
+				var f *os.File
+				f, err = os.Create(c.String("otel.exporter.path"))
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				defer func(f *os.File) {
+					err = f.Close()
+					if err != nil {
+						log.Error().Err(err).Msgf("OpenTelemetry close file error: %v", err)
+					}
+				}(f)
+				exporter, err = stdouttrace.New(stdouttrace.WithWriter(f), stdouttrace.WithPrettyPrint())
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
 			}
-			tp := tracesdk.NewTracerProvider(
-				tracesdk.WithSampler(tracesdk.AlwaysSample()),
-				tracesdk.WithBatcher(exporter),
-				tracesdk.WithResource(resource.NewWithAttributes(
-					build.ExtendedVersion(),
-				)),
-			)
-			otel.SetTracerProvider(tp)
-			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-			defer func() { _ = exporter.Shutdown(context.Background()) }()
 
 			// Print startup message
 			fmt.Printf("Starting Torq %s\n", build.ExtendedVersion())
@@ -241,7 +264,7 @@ func main() {
 			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
 				c.String("db.password"), c.String("db.host"), c.String("db.port"))
 			if err != nil {
-				return errors.Wrap(err, "start cmd")
+				return errors.Wrap(err, "Database connect")
 			}
 
 			defer func() {
@@ -344,6 +367,18 @@ func main() {
 	}
 }
 
+func setupTracerProvider(fraction float64, exporter tracesdk.SpanExporter) {
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(fraction))),
+		tracesdk.WithBatcher(exporter),
+		tracesdk.WithResource(resource.NewWithAttributes(
+			build.ExtendedVersion(),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+}
+
 func pprofStartup(c *cli.Context) {
 	runtime.SetBlockProfileRate(1)
 	runtime.SetMutexProfileFraction(1)
@@ -419,7 +454,7 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 					"Node specified in config is not in DB, obtaining public key from GRPC: %v", grpcAddress)
 				var nodeConnectionDetails settings.NodeConnectionDetails
 				for {
-					nodeConnectionDetails, err = settings.AddNodeToDB(db, core.LND, grpcAddress, tlsFile, macaroonFile, nil)
+					nodeConnectionDetails, err = settings.AddNodeToDB(context.Background(), db, core.LND, grpcAddress, tlsFile, macaroonFile, nil)
 					if err == nil && nodeConnectionDetails.NodeId != 0 {
 						break
 					} else {
@@ -486,7 +521,7 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 					"Node specified in config is not in DB, obtaining public key from GRPC: %v", grpcAddress)
 				var nodeConnectionDetails settings.NodeConnectionDetails
 				for {
-					nodeConnectionDetails, err = settings.AddNodeToDB(db, core.CLN, grpcAddress, certificate, key, caCertificate)
+					nodeConnectionDetails, err = settings.AddNodeToDB(context.Background(), db, core.CLN, grpcAddress, certificate, key, caCertificate)
 					if err == nil && nodeConnectionDetails.NodeId != 0 {
 						break
 					} else {

@@ -1,6 +1,8 @@
 package lightning
 
 import (
+	"context"
+
 	"github.com/cockroachdb/errors"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -13,7 +15,7 @@ import (
 var ServiceInactiveError = errors.New("service is not active")         //nolint:gochecknoglobals
 var UnsupportedOperationError = errors.New("request is not supported") //nolint:gochecknoglobals
 
-func GetInformation(nodeId int) (lightning_helpers.InformationResponse, error) {
+func GetInformation(ctx context.Context, nodeId int) (lightning_helpers.InformationResponse, error) {
 	request := lightning_helpers.InformationRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -38,7 +40,7 @@ func GetInformation(nodeId int) (lightning_helpers.InformationResponse, error) {
 		if !cache.IsClnServiceActive(nodeId) {
 			return lightning_helpers.InformationResponse{}, ServiceInactiveError
 		}
-		response = cln.Information(request)
+		response = cln.Information(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.InformationResponse{}, errors.New(response.Error)
@@ -46,7 +48,7 @@ func GetInformation(nodeId int) (lightning_helpers.InformationResponse, error) {
 	return response, nil
 }
 
-func SignMessage(nodeId int, message string, singleHash *bool) (string, error) {
+func SignMessage(ctx context.Context, nodeId int, message string, singleHash *bool) (string, error) {
 	request := lightning_helpers.SignMessageRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -73,7 +75,7 @@ func SignMessage(nodeId int, message string, singleHash *bool) (string, error) {
 		if !cache.IsClnServiceActive(nodeId) {
 			return "", ServiceInactiveError
 		}
-		response = cln.SignMessage(request)
+		response = cln.SignMessage(ctx, request)
 	}
 	if response.Error != "" {
 		return "", errors.New(response.Error)
@@ -81,7 +83,7 @@ func SignMessage(nodeId int, message string, singleHash *bool) (string, error) {
 	return response.Signature, nil
 }
 
-func SignatureVerification(nodeId int, message string, signature string) (string, bool, error) {
+func SignatureVerification(ctx context.Context, nodeId int, message string, signature string) (string, bool, error) {
 	request := lightning_helpers.SignatureVerificationRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -108,7 +110,7 @@ func SignatureVerification(nodeId int, message string, signature string) (string
 		if !cache.IsClnServiceActive(nodeId) {
 			return "", false, ServiceInactiveError
 		}
-		response = cln.SignatureVerification(request)
+		response = cln.SignatureVerification(ctx, request)
 	}
 	if response.Error != "" {
 		return "", false, errors.New(response.Error)
@@ -116,7 +118,7 @@ func SignatureVerification(nodeId int, message string, signature string) (string
 	return response.PublicKey, response.Valid, nil
 }
 
-func SetRoutingPolicy(
+func SetRoutingPolicy(ctx context.Context,
 	request lightning_helpers.RoutingPolicyUpdateRequest) (lightning_helpers.RoutingPolicyUpdateResponse, error) {
 
 	response := lightning_helpers.RoutingPolicyUpdateResponse{
@@ -137,7 +139,7 @@ func SetRoutingPolicy(
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.RoutingPolicyUpdateResponse{}, ServiceInactiveError
 		}
-		response = cln.RoutingPolicyUpdate(request)
+		response = cln.RoutingPolicyUpdate(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.RoutingPolicyUpdateResponse{}, errors.New(response.Error)
@@ -145,7 +147,7 @@ func SetRoutingPolicy(
 	return response, nil
 }
 
-func ConnectPeer(nodeId int, publicKey string, host string) (bool, error) {
+func ConnectPeer(ctx context.Context, nodeId int, publicKey string, host string) (bool, error) {
 	request := lightning_helpers.ConnectPeerRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -172,7 +174,7 @@ func ConnectPeer(nodeId int, publicKey string, host string) (bool, error) {
 		if !cache.IsClnServiceActive(nodeId) {
 			return false, ServiceInactiveError
 		}
-		response = cln.ConnectPeer(request)
+		response = cln.ConnectPeer(ctx, request)
 	}
 	if response.Error != "" {
 		return false, errors.New(response.Error)
@@ -180,7 +182,7 @@ func ConnectPeer(nodeId int, publicKey string, host string) (bool, error) {
 	return response.RequestFailCurrentlyConnected, nil
 }
 
-func DisconnectPeer(nodeId int, peerNodeId int) (bool, error) {
+func DisconnectPeer(ctx context.Context, nodeId int, peerNodeId int) (bool, error) {
 	request := lightning_helpers.DisconnectPeerRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -206,7 +208,7 @@ func DisconnectPeer(nodeId int, peerNodeId int) (bool, error) {
 		if !cache.IsClnServiceActive(nodeId) {
 			return false, ServiceInactiveError
 		}
-		response = cln.DisconnectPeer(request)
+		response = cln.DisconnectPeer(ctx, request)
 	}
 	if response.Error != "" {
 		return false, errors.New(response.Error)
@@ -214,7 +216,7 @@ func DisconnectPeer(nodeId int, peerNodeId int) (bool, error) {
 	return response.RequestFailedCurrentlyDisconnected, nil
 }
 
-func GetWalletBalance(nodeId int) (lightning_helpers.WalletBalanceResponse, error) {
+func GetWalletBalance(ctx context.Context, nodeId int) (lightning_helpers.WalletBalanceResponse, error) {
 	request := lightning_helpers.WalletBalanceRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -239,7 +241,7 @@ func GetWalletBalance(nodeId int) (lightning_helpers.WalletBalanceResponse, erro
 		if !cache.IsClnServiceActive(nodeId) {
 			return lightning_helpers.WalletBalanceResponse{}, ServiceInactiveError
 		}
-		response = cln.WalletBalance(request)
+		response = cln.WalletBalance(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.WalletBalanceResponse{}, errors.New(response.Error)
@@ -247,7 +249,7 @@ func GetWalletBalance(nodeId int) (lightning_helpers.WalletBalanceResponse, erro
 	return response, nil
 }
 
-func ListPeers(nodeId int, latestError bool) (map[string]lightning_helpers.Peer, error) {
+func ListPeers(ctx context.Context, nodeId int, latestError bool) (map[string]lightning_helpers.Peer, error) {
 	request := lightning_helpers.ListPeersRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{
 			NodeId: nodeId,
@@ -273,7 +275,7 @@ func ListPeers(nodeId int, latestError bool) (map[string]lightning_helpers.Peer,
 		if !cache.IsClnServiceActive(nodeId) {
 			return nil, ServiceInactiveError
 		}
-		response = cln.ListPeers(request)
+		response = cln.ListPeers(ctx, request)
 	}
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
@@ -281,7 +283,8 @@ func ListPeers(nodeId int, latestError bool) (map[string]lightning_helpers.Peer,
 	return response.Peers, nil
 }
 
-func NewAddress(request lightning_helpers.NewAddressRequest) (string, error) {
+func NewAddress(ctx context.Context,
+	request lightning_helpers.NewAddressRequest) (string, error) {
 	response := lightning_helpers.NewAddressResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -300,7 +303,7 @@ func NewAddress(request lightning_helpers.NewAddressRequest) (string, error) {
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return "", ServiceInactiveError
 		}
-		response = cln.NewAddress(request)
+		response = cln.NewAddress(ctx, request)
 	}
 	if response.Error != "" {
 		return "", errors.New(response.Error)
@@ -308,7 +311,8 @@ func NewAddress(request lightning_helpers.NewAddressRequest) (string, error) {
 	return response.Address, nil
 }
 
-func OpenChannel(request lightning_helpers.OpenChannelRequest) (lightning_helpers.OpenChannelResponse, error) {
+func OpenChannel(ctx context.Context,
+	request lightning_helpers.OpenChannelRequest) (lightning_helpers.OpenChannelResponse, error) {
 	response := lightning_helpers.OpenChannelResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -327,7 +331,7 @@ func OpenChannel(request lightning_helpers.OpenChannelRequest) (lightning_helper
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.OpenChannelResponse{}, ServiceInactiveError
 		}
-		response = cln.OpenChannel(request)
+		response = cln.OpenChannel(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.OpenChannelResponse{}, errors.New(response.Error)
@@ -335,7 +339,7 @@ func OpenChannel(request lightning_helpers.OpenChannelRequest) (lightning_helper
 	return response, nil
 }
 
-func BatchOpenChannel(
+func BatchOpenChannel(ctx context.Context,
 	request lightning_helpers.BatchOpenChannelRequest) (lightning_helpers.BatchOpenChannelResponse, error) {
 
 	response := lightning_helpers.BatchOpenChannelResponse{
@@ -364,7 +368,8 @@ func BatchOpenChannel(
 	return response, nil
 }
 
-func CloseChannel(request lightning_helpers.CloseChannelRequest) (lightning_helpers.CloseChannelResponse, error) {
+func CloseChannel(ctx context.Context,
+	request lightning_helpers.CloseChannelRequest) (lightning_helpers.CloseChannelResponse, error) {
 	response := lightning_helpers.CloseChannelResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -383,7 +388,7 @@ func CloseChannel(request lightning_helpers.CloseChannelRequest) (lightning_help
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.CloseChannelResponse{}, ServiceInactiveError
 		}
-		response = cln.CloseChannel(request)
+		response = cln.CloseChannel(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.CloseChannelResponse{}, errors.New(response.Error)
@@ -391,7 +396,8 @@ func CloseChannel(request lightning_helpers.CloseChannelRequest) (lightning_help
 	return response, nil
 }
 
-func NewInvoice(request lightning_helpers.NewInvoiceRequest) (lightning_helpers.NewInvoiceResponse, error) {
+func NewInvoice(ctx context.Context,
+	request lightning_helpers.NewInvoiceRequest) (lightning_helpers.NewInvoiceResponse, error) {
 	response := lightning_helpers.NewInvoiceResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -410,7 +416,7 @@ func NewInvoice(request lightning_helpers.NewInvoiceRequest) (lightning_helpers.
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.NewInvoiceResponse{}, ServiceInactiveError
 		}
-		response = cln.NewInvoice(request)
+		response = cln.NewInvoice(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.NewInvoiceResponse{}, errors.New(response.Error)
@@ -418,7 +424,8 @@ func NewInvoice(request lightning_helpers.NewInvoiceRequest) (lightning_helpers.
 	return response, nil
 }
 
-func OnChainPayment(request lightning_helpers.OnChainPaymentRequest) (string, error) {
+func OnChainPayment(ctx context.Context,
+	request lightning_helpers.OnChainPaymentRequest) (string, error) {
 	response := lightning_helpers.OnChainPaymentResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -437,7 +444,7 @@ func OnChainPayment(request lightning_helpers.OnChainPaymentRequest) (string, er
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return "", ServiceInactiveError
 		}
-		response = cln.OnChainPayment(request)
+		response = cln.OnChainPayment(ctx, request)
 	}
 	if response.Error != "" {
 		return "", errors.New(response.Error)
@@ -445,7 +452,8 @@ func OnChainPayment(request lightning_helpers.OnChainPaymentRequest) (string, er
 	return response.TxId, nil
 }
 
-func NewPayment(request lightning_helpers.NewPaymentRequest) (lightning_helpers.NewPaymentResponse, error) {
+func NewPayment(ctx context.Context,
+	request lightning_helpers.NewPaymentRequest) (lightning_helpers.NewPaymentResponse, error) {
 	response := lightning_helpers.NewPaymentResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -464,7 +472,7 @@ func NewPayment(request lightning_helpers.NewPaymentRequest) (lightning_helpers.
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.NewPaymentResponse{}, ServiceInactiveError
 		}
-		response = cln.NewPayment(request)
+		response = cln.NewPayment(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.NewPaymentResponse{}, errors.New(response.Error)
@@ -472,7 +480,8 @@ func NewPayment(request lightning_helpers.NewPaymentRequest) (lightning_helpers.
 	return response, nil
 }
 
-func DecodeInvoice(request lightning_helpers.DecodeInvoiceRequest) (lightning_helpers.DecodeInvoiceResponse, error) {
+func DecodeInvoice(ctx context.Context,
+	request lightning_helpers.DecodeInvoiceRequest) (lightning_helpers.DecodeInvoiceResponse, error) {
 	response := lightning_helpers.DecodeInvoiceResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -491,7 +500,7 @@ func DecodeInvoice(request lightning_helpers.DecodeInvoiceRequest) (lightning_he
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.DecodeInvoiceResponse{}, ServiceInactiveError
 		}
-		response = cln.DecodeInvoice(request)
+		response = cln.DecodeInvoice(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.DecodeInvoiceResponse{}, errors.New(response.Error)

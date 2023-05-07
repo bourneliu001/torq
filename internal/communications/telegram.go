@@ -157,7 +157,7 @@ func SubscribeTelegram(ctx context.Context, db *sqlx.DB, highPriority bool) {
 				return
 			// receive update from channel and then handle it
 			case update := <-updates:
-				handleUpdate(db, update, communicationTargetType)
+				handleUpdate(ctx, db, update, communicationTargetType)
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func SendTelegramBotMessages(botMessage MessageForBot, targetType CommunicationT
 	}
 }
 
-func handleUpdate(db *sqlx.DB, update tgbotapi.Update, communicationTargetType CommunicationTargetType) {
+func handleUpdate(ctx context.Context, db *sqlx.DB, update tgbotapi.Update, communicationTargetType CommunicationTargetType) {
 	switch {
 	case update.Message != nil:
 		messageForBot := MessageForBot{
@@ -257,7 +257,7 @@ func handleUpdate(db *sqlx.DB, update tgbotapi.Update, communicationTargetType C
 					text = ""
 				}
 				text = strings.TrimSpace(text)
-				HandleMessage(db, messageForBot, text, command, communicationTargetType)
+				HandleMessage(ctx, db, messageForBot, text, command, communicationTargetType)
 				break
 			}
 		}
@@ -281,7 +281,7 @@ func handleUpdate(db *sqlx.DB, update tgbotapi.Update, communicationTargetType C
 					text = ""
 				}
 				text = strings.TrimSpace(text)
-				HandleButton(db, messageForBot, command, text, communicationTargetType)
+				HandleButton(ctx, db, messageForBot, command, text, communicationTargetType)
 				break
 			}
 		}
@@ -292,7 +292,7 @@ func handleUpdate(db *sqlx.DB, update tgbotapi.Update, communicationTargetType C
 				UserName: update.ChannelPost.Chat.Title,
 			},
 		}
-		HandleMessage(db, messageForBot, update.ChannelPost.Text, update.ChannelPost.Command(), communicationTargetType)
+		HandleMessage(ctx, db, messageForBot, update.ChannelPost.Text, update.ChannelPost.Command(), communicationTargetType)
 	}
 }
 
