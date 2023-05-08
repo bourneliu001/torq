@@ -69,7 +69,7 @@ func TestListForwards(t *testing.T) {
 		panic(err)
 	}
 
-	db, cancel, err := srv.NewTestDatabase(true)
+	db, cancel, err := srv.NewTestDatabase()
 	defer cancel()
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestStoreForward(t *testing.T) {
 		panic(err)
 	}
 
-	db, cancel, err := srv.NewTestDatabase(true)
+	db, cancel, err := srv.NewTestDatabase()
 	defer cancel()
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +192,7 @@ func TestStoreHtlc(t *testing.T) {
 		panic(err)
 	}
 
-	db, cancel, err := srv.NewTestDatabase(true)
+	db, cancel, err := srv.NewTestDatabase()
 	defer cancel()
 	if err != nil {
 		t.Fatal(err)

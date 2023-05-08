@@ -10,6 +10,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -17,6 +18,7 @@ import (
 	"github.com/lncapital/torq/internal/database"
 	"github.com/lncapital/torq/internal/services_helpers"
 	"github.com/lncapital/torq/internal/tags"
+	prometheus2 "github.com/lncapital/torq/pkg/prometheus"
 )
 
 const superuserName = "postgres"
@@ -146,7 +148,7 @@ func (srv *Server) createDatabase() (string, error) {
 }
 
 // NewTestDatabase opens a connection to a freshly created database on the server.
-func (srv *Server) NewTestDatabase(migrate bool) (*sqlx.DB, context.CancelFunc, error) {
+func (srv *Server) NewTestDatabase() (*sqlx.DB, context.CancelFunc, error) {
 
 	// Create the new test database based on the main server connection
 	dns, err := srv.createDatabase()
@@ -162,6 +164,10 @@ func (srv *Server) NewTestDatabase(migrate bool) (*sqlx.DB, context.CancelFunc, 
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+
+	registry := prometheus.NewRegistry()
+	services_helpers.SetMetrics(services_helpers.NewMetrics(registry))
+	prometheus2.SetRegistry(registry)
 
 	// Migrate the new test database
 	err = database.MigrateUp(db)

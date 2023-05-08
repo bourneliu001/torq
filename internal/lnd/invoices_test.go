@@ -12,7 +12,7 @@ import (
 //		panic(err)
 //	}
 //
-//	db, err := srv.NewTestDatabase(true)
+//	db, err := srv.NewTestDatabase()
 //	if err != nil {
 //		t.Fatal(err)
 //	}
