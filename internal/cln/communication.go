@@ -1568,7 +1568,7 @@ func processDecodeInvoiceRequest(ctx context.Context,
 	}
 
 	client := cln.NewNodeClient(connection)
-	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: request.Invoice})
+	decodedInvoice, err := client.DecodePay(ctx, &cln.DecodepayRequest{Bolt11: request.Invoice})
 	// TODO: Handle different error types like incorrect checksum etc to explain why the decode failed.
 	if err != nil {
 		response.Error = err.Error()
@@ -1596,9 +1596,9 @@ func processDecodeInvoiceRequest(ctx context.Context,
 	return response
 }
 
-func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
+func constructDecodedInvoice(decodedInvoice *cln.DecodepayResponse,
 	response lightning_helpers.DecodeInvoiceResponse) lightning_helpers.DecodeInvoiceResponse {
-	if decodedInvoice == nil || !decodedInvoice.Valid {
+	if decodedInvoice == nil {
 		return response
 	}
 	response.Status = lightning_helpers.Active
@@ -1606,30 +1606,22 @@ func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	nodeSettings := cache.GetNodeSettingsByNodeId(response.Request.NodeId)
 	response.NodeAlias = cache.GetNodeAlias(cache.GetPeerNodeIdByPublicKey(response.DestinationPubKey, nodeSettings.Chain, nodeSettings.Network))
 	response.RHash = hex.EncodeToString(decodedInvoice.PaymentHash)
-	if decodedInvoice.InvoiceAmountMsat != nil {
-		response.ValueMsat = int64((*decodedInvoice.InvoiceAmountMsat).Msat)
+	if decodedInvoice.AmountMsat != nil {
+		response.ValueMsat = int64((*decodedInvoice.AmountMsat).Msat)
 	}
-	if decodedInvoice.InvoiceFallbacks != nil {
-		for _, fb := range decodedInvoice.InvoiceFallbacks {
+	if decodedInvoice.Fallbacks != nil {
+		for _, fb := range decodedInvoice.Fallbacks {
 			if response.FallbackAddr == "" {
-				response.FallbackAddr = fb.GetAddress()
+				response.FallbackAddr = fb.GetAddr()
 			}
 		}
 	}
-	if decodedInvoice.CreatedAt != nil {
-		response.CreatedAt = time.Unix(int64(*decodedInvoice.CreatedAt), 0)
-		if decodedInvoice.Expiry != nil {
-			response.ExpireAt = response.ExpireAt.Add(time.Duration(*decodedInvoice.Expiry) * time.Second)
-		}
-	}
-	if decodedInvoice.Expiry != nil {
-		response.Expiry = int64(*decodedInvoice.Expiry)
-	}
-	if decodedInvoice.MinFinalCltvExpiry != nil {
-		response.CltvExpiry = int64(*decodedInvoice.MinFinalCltvExpiry)
-	}
+	response.CreatedAt = time.Unix(int64(decodedInvoice.CreatedAt), 0)
+	response.ExpireAt = response.ExpireAt.Add(time.Duration(decodedInvoice.Expiry) * time.Second)
+	response.Expiry = int64(decodedInvoice.Expiry)
+	response.CltvExpiry = int64(decodedInvoice.MinFinalCltvExpiry)
 	//response.RouteHints = constructRoutes(decodedInvoice.Routes)
-	response.Features = constructFeatureMap(decodedInvoice.InvoiceFeatures)
+	response.Features = constructFeatureMap(decodedInvoice.Features)
 	return response
 }
 

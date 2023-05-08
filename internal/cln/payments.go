@@ -23,9 +23,9 @@ type client_ListPayments interface {
 	ListSendPays(ctx context.Context,
 		in *cln.ListsendpaysRequest,
 		opts ...grpc.CallOption) (*cln.ListsendpaysResponse, error)
-	Decode(ctx context.Context,
-		in *cln.DecodeRequest,
-		opts ...grpc.CallOption) (*cln.DecodeResponse, error)
+	DecodePay(ctx context.Context,
+		in *cln.DecodepayRequest,
+		opts ...grpc.CallOption) (*cln.DecodepayResponse, error)
 }
 
 func SubscribeAndStorePayments(ctx context.Context,
@@ -234,8 +234,7 @@ func storePayment(db *sqlx.DB,
 	}
 
 	_, err = db.Exec(`UPDATE payment
-			SET status=$1, failure_reason=$2, description=$3, payment_preimage=$4
-			    node_id=$5, updated_on=$6
+			SET status=$1, failure_reason=$2, description=$3, payment_preimage=$4, node_id=$5, updated_on=$6
 			WHERE payment_hash=$7 AND (
 			      	(status IS NULL OR status!=$1) OR
 			      	(failure_reason IS NULL OR failure_reason!=$2) OR

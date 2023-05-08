@@ -21,9 +21,9 @@ type client_ListInvoices interface {
 	ListInvoices(ctx context.Context,
 		in *cln.ListinvoicesRequest,
 		opts ...grpc.CallOption) (*cln.ListinvoicesResponse, error)
-	Decode(ctx context.Context,
-		in *cln.DecodeRequest,
-		opts ...grpc.CallOption) (*cln.DecodeResponse, error)
+	DecodePay(ctx context.Context,
+		in *cln.DecodepayRequest,
+		opts ...grpc.CallOption) (*cln.DecodepayResponse, error)
 }
 
 func SubscribeAndStoreInvoices(ctx context.Context,
@@ -183,7 +183,7 @@ func storeInvoice(ctx context.Context,
 		if clnInvoice.Bolt12 != nil {
 			invoiceString = *clnInvoice.Bolt12
 		}
-		decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: invoiceString})
+		decodedInvoice, err := client.DecodePay(ctx, &cln.DecodepayRequest{Bolt11: invoiceString})
 		if err != nil {
 			return errors.Wrapf(err,
 				"decoding invoice failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
@@ -193,14 +193,17 @@ func storeInvoice(ctx context.Context,
 				"decoding invoice failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
 		}
 		var creationDate *time.Time
-		if decodedInvoice.CreatedAt != nil {
-			creationDateTime := time.Unix(int64(*decodedInvoice.CreatedAt), 0)
-			creationDate = &creationDateTime
-		}
+		creationDateTime := time.Unix(int64(decodedInvoice.CreatedAt), 0)
+		creationDate = &creationDateTime
 		descriptionHash := hex.EncodeToString(decodedInvoice.DescriptionHash)
-		// TODO FIXME CLN fix this fallback stuff
-		//if decodedInvoice.Fallbacks
-		//fallback_addr
+		var fallbackAddr *string
+		if len(decodedInvoice.Fallbacks) != 0 {
+			for ix := range decodedInvoice.Fallbacks {
+				if fallbackAddr == nil || *fallbackAddr == "" {
+					fallbackAddr = decodedInvoice.Fallbacks[ix].Addr
+				}
+			}
+		}
 		var destinationNodeId *int
 		var destinationPublicKey *string
 		destinationPublicKeyString := hex.EncodeToString(decodedInvoice.Payee)
@@ -217,7 +220,7 @@ func storeInvoice(ctx context.Context,
 		// TODO FIXME CLN: RoutHints, Features are missing?
 
 		_, err = db.Exec(`INSERT INTO invoice (
-				memo, label, type,
+				memo, label, fallback_addr,
 				r_preimage, r_hash,
 				value_msat, settle_date, expiry, settle_index, amt_paid_msat, invoice_state,
 			 	creation_date, description_hash, destination_node_id, destination_pub_key,
@@ -226,7 +229,7 @@ func storeInvoice(ctx context.Context,
 			) VALUES (
 				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
 			);`,
-			clnInvoice.Description, clnInvoice.Label, decodedInvoice.ItemType,
+			clnInvoice.Description, clnInvoice.Label, fallbackAddr,
 			hex.EncodeToString(clnInvoice.PaymentPreimage), hex.EncodeToString(clnInvoice.PaymentHash),
 			amountMsat, paidAt, clnInvoice.ExpiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
 			creationDate, descriptionHash, destinationNodeId, destinationPublicKey,
