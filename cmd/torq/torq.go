@@ -260,7 +260,7 @@ func main() {
 			}
 
 			registry := prometheus.NewRegistry()
-			services_helpers.SetMetrics(services_helpers.NewMetrics(registry)).SetState(services_helpers.Inactive)
+			services_helpers.SetMetrics(services_helpers.NewMetrics(registry))
 			prometheus2.SetRegistry(registry)
 
 			// Print startup message
@@ -546,7 +546,6 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 		break
 	}
 
-	services_helpers.GetMetrics().SetState(services_helpers.Pending)
 	cache.SetPendingCoreServiceState(services_helpers.RootService)
 }
 
@@ -561,7 +560,6 @@ func servicesMonitor(db *sqlx.DB) {
 
 		// Root service ended up in a failed state
 		if cache.GetCoreFailedAttemptTime(services_helpers.RootService) != nil {
-			services_helpers.GetMetrics().SetState(services_helpers.Inactive)
 			log.Info().Msg("Torq is dead.")
 			panic("RootService cannot be bootstrapped")
 		}
@@ -602,7 +600,6 @@ func servicesMonitor(db *sqlx.DB) {
 			if err != nil {
 				log.Error().Err(err).Msg("Torq cannot be initialized (Loading caches in memory).")
 			}
-			services_helpers.GetMetrics().SetState(services_helpers.Initializing)
 			cache.SetInitializingCoreServiceState(services_helpers.RootService)
 			continue
 		case services_helpers.Initializing:
@@ -747,7 +744,6 @@ func processTorqInitialBoot(db *sqlx.DB) {
 			CustomSettings:         customSettings,
 		})
 	}
-	services_helpers.GetMetrics().SetState(services_helpers.Active)
 	cache.SetActiveCoreServiceState(services_helpers.RootService)
 }
 

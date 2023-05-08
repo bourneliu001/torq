@@ -129,12 +129,12 @@ func AddNodeToDB(ctx context.Context,
 	}
 	switch implementation {
 	case core.LND:
-		existingNodeConnectionDetails.TLSDataBytes = certificate
-		existingNodeConnectionDetails.MacaroonDataBytes = authentication
+		nodeConnectionDetailsData.TLSDataBytes = certificate
+		nodeConnectionDetailsData.MacaroonDataBytes = authentication
 	case core.CLN:
-		existingNodeConnectionDetails.CertificateDataBytes = certificate
-		existingNodeConnectionDetails.KeyDataBytes = authentication
-		existingNodeConnectionDetails.CaCertificateDataBytes = caCertificate
+		nodeConnectionDetailsData.CertificateDataBytes = certificate
+		nodeConnectionDetailsData.KeyDataBytes = authentication
+		nodeConnectionDetailsData.CaCertificateDataBytes = caCertificate
 	}
 	ncd, err := addNodeConnectionDetails(db, nodeConnectionDetailsData)
 	if err != nil {
