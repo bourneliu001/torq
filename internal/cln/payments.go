@@ -23,9 +23,6 @@ type client_ListPayments interface {
 	ListSendPays(ctx context.Context,
 		in *cln.ListsendpaysRequest,
 		opts ...grpc.CallOption) (*cln.ListsendpaysResponse, error)
-	DecodePay(ctx context.Context,
-		in *cln.DecodepayRequest,
-		opts ...grpc.CallOption) (*cln.DecodepayResponse, error)
 }
 
 func SubscribeAndStorePayments(ctx context.Context,
