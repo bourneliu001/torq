@@ -17,11 +17,11 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	"github.com/lncapital/torq/pkg/grpc_helpers"
+	"github.com/lncapital/torq/pkg/prometheus"
 )
 
 // Connect connects to LND using gRPC. DO NOT USE THIS UNLESS THE GRPC SETTINGS ARE NOT VALIDATED NOR ACTIVATED IN TORQ.
 func Connect(host string, tlsCert []byte, macaroonBytes []byte) (*grpc.ClientConn, error) {
-
 	cp := x509.NewCertPool()
 	if !cp.AppendCertsFromPEM(tlsCert) {
 		return nil, fmt.Errorf("credentials: failed to append certificates")
@@ -38,7 +38,7 @@ func Connect(host string, tlsCert []byte, macaroonBytes []byte) (*grpc.ClientCon
 		return nil, fmt.Errorf("cannot create macaroon credentials: %v", err)
 	}
 
-	clMetrics := grpc_helpers.GetClientMetrics()
+	clMetrics := prometheus.GetGrpcClientMetrics()
 	loggerOpts := grpc_helpers.GetLoggingOptions()
 	exemplarFromContext := grpc_helpers.GetExemplarFromContext()
 
@@ -50,7 +50,6 @@ func Connect(host string, tlsCert []byte, macaroonBytes []byte) (*grpc.ClientCon
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(tlsCreds),
 		grpc.WithPerRPCCredentials(macCred),
-		// max size to 25mb
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(grpc_helpers.RecvMsgSize)),
 		grpc.WithChainUnaryInterceptor(
 			timeout.UnaryClientInterceptor(grpc_helpers.UnaryTimeout),

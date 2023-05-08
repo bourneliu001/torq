@@ -13,7 +13,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jmoiron/sqlx"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
@@ -44,6 +44,7 @@ import (
 	"github.com/lncapital/torq/internal/workflows"
 	"github.com/lncapital/torq/pkg/cln_connect"
 	"github.com/lncapital/torq/pkg/lnd_connect"
+	prometheus2 "github.com/lncapital/torq/pkg/prometheus"
 )
 
 var debuglevels = map[string]zerolog.Level{ //nolint:gochecknoglobals
@@ -217,6 +218,7 @@ func main() {
 			}
 
 			var exporter tracesdk.SpanExporter
+			var tp *tracesdk.TracerProvider
 			switch strings.ToLower(c.String("otel.exporter.type")) {
 			case "stdout":
 				// Set up OTLP tracing (stdout for debug).
@@ -225,7 +227,7 @@ func main() {
 					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
 					os.Exit(1)
 				}
-				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
 				defer func() { _ = exporter.Shutdown(context.Background()) }()
 			case "jaeger":
 				exporter, err = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(c.String("otel.exporter.endpoint"))))
@@ -233,7 +235,7 @@ func main() {
 					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
 					os.Exit(1)
 				}
-				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
 				defer func() { _ = exporter.Shutdown(context.Background()) }()
 			case "file":
 				var f *os.File
@@ -253,9 +255,13 @@ func main() {
 					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
 					os.Exit(1)
 				}
-				setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
 				defer func() { _ = exporter.Shutdown(context.Background()) }()
 			}
+
+			registry := prometheus.NewRegistry()
+			services_helpers.SetMetrics(services_helpers.NewMetrics(registry)).SetState(services_helpers.Inactive)
+			prometheus2.SetRegistry(registry)
 
 			// Print startup message
 			fmt.Printf("Starting Torq %s\n", build.ExtendedVersion())
@@ -312,13 +318,9 @@ func main() {
 				go pprofStartup(c)
 			}
 
-			if c.String("torq.prometheus.path") != "" {
-				go prometheusStartup(c)
-			}
-
-			if err = torqsrv.Start(c.String("torq.network-interface"), c.Int("torq.port"), c.String("torq.password"),
+			if err = torqsrv.Start(tp, c.String("torq.network-interface"), c.Int("torq.port"), c.String("torq.password"),
 				c.String("torq.cookie-path"),
-				db, c.Bool("torq.auto-login")); err != nil {
+				db, c.Bool("torq.auto-login"), c.String("torq.prometheus.path")); err != nil {
 				return errors.Wrap(err, "Starting torq webserver")
 			}
 
@@ -367,7 +369,7 @@ func main() {
 	}
 }
 
-func setupTracerProvider(fraction float64, exporter tracesdk.SpanExporter) {
+func setupTracerProvider(fraction float64, exporter tracesdk.SpanExporter) *tracesdk.TracerProvider {
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(fraction))),
 		tracesdk.WithBatcher(exporter),
@@ -377,6 +379,7 @@ func setupTracerProvider(fraction float64, exporter tracesdk.SpanExporter) {
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	return tp
 }
 
 func pprofStartup(c *cli.Context) {
@@ -386,14 +389,6 @@ func pprofStartup(c *cli.Context) {
 	err := http.ListenAndServe(c.String("torq.pprof.path"), nil) //nolint:gosec
 	if err != nil {
 		log.Error().Err(err).Msg("Torq could not start pprof")
-	}
-}
-
-func prometheusStartup(c *cli.Context) {
-	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(c.String("torq.prometheus.path"), nil) //nolint:gosec
-	if err != nil {
-		log.Error().Err(err).Msg("Torq could not start prometheus")
 	}
 }
 
@@ -551,6 +546,7 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 		break
 	}
 
+	services_helpers.GetMetrics().SetState(services_helpers.Pending)
 	cache.SetPendingCoreServiceState(services_helpers.RootService)
 }
 
@@ -565,6 +561,7 @@ func servicesMonitor(db *sqlx.DB) {
 
 		// Root service ended up in a failed state
 		if cache.GetCoreFailedAttemptTime(services_helpers.RootService) != nil {
+			services_helpers.GetMetrics().SetState(services_helpers.Inactive)
 			log.Info().Msg("Torq is dead.")
 			panic("RootService cannot be bootstrapped")
 		}
@@ -605,6 +602,7 @@ func servicesMonitor(db *sqlx.DB) {
 			if err != nil {
 				log.Error().Err(err).Msg("Torq cannot be initialized (Loading caches in memory).")
 			}
+			services_helpers.GetMetrics().SetState(services_helpers.Initializing)
 			cache.SetInitializingCoreServiceState(services_helpers.RootService)
 			continue
 		case services_helpers.Initializing:
@@ -749,6 +747,7 @@ func processTorqInitialBoot(db *sqlx.DB) {
 			CustomSettings:         customSettings,
 		})
 	}
+	services_helpers.GetMetrics().SetState(services_helpers.Active)
 	cache.SetActiveCoreServiceState(services_helpers.RootService)
 }
 
@@ -868,8 +867,7 @@ func bootService(db *sqlx.DB, serviceType services_helpers.ServiceType, nodeId i
 		switch *implementation {
 		case core.LND:
 			nodeConnectionDetails := cache.GetNodeConnectionDetails(nodeId)
-			conn, err = lnd_connect.Connect(
-				nodeConnectionDetails.GRPCAddress,
+			conn, err = lnd_connect.Connect(nodeConnectionDetails.GRPCAddress,
 				nodeConnectionDetails.TLSFileBytes,
 				nodeConnectionDetails.MacaroonFileBytes)
 			if err != nil {
@@ -879,8 +877,7 @@ func bootService(db *sqlx.DB, serviceType services_helpers.ServiceType, nodeId i
 			}
 		case core.CLN:
 			nodeConnectionDetails := cache.GetNodeConnectionDetails(nodeId)
-			conn, err = cln_connect.Connect(
-				nodeConnectionDetails.GRPCAddress,
+			conn, err = cln_connect.Connect(nodeConnectionDetails.GRPCAddress,
 				nodeConnectionDetails.CertificateFileBytes,
 				nodeConnectionDetails.KeyFileBytes,
 				nodeConnectionDetails.CaCertificateFileBytes)

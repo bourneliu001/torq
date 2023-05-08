@@ -19,6 +19,8 @@ import (
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/lncapital/torq/internal/auth"
 	"github.com/lncapital/torq/internal/automation"
@@ -43,9 +45,90 @@ import (
 	"github.com/lncapital/torq/web"
 )
 
-func Start(host string, port int, apiPswd string, cookiePath string, db *sqlx.DB, autoLogin bool) error {
-	r := gin.Default()
-	r.Use(otelgin.Middleware("torq-backend"))
+func Start(tp *tracesdk.TracerProvider,
+	host string,
+	port int,
+	apiPswd string,
+	cookiePath string,
+	db *sqlx.DB,
+	autoLogin bool,
+	prometheusPath string) error {
+
+	var p *Prometheus
+	if prometheusPath != "" {
+		p = NewPrometheus("gin").SetEnableExemplar(tp != nil)
+		p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
+			url := c.Request.URL.Path
+			for _, p := range c.Params {
+				switch p.Key {
+				case "channelId":
+					url = strings.Replace(url, p.Value, ":channelId", 1)
+				case "nodeId":
+					url = strings.Replace(url, p.Value, ":nodeId", 1)
+				case "network":
+					url = strings.Replace(url, p.Value, ":network", 1)
+				case "categoryId":
+					url = strings.Replace(url, p.Value, ":categoryId", 1)
+				case "tagId":
+					url = strings.Replace(url, p.Value, ":tagId", 1)
+				case "identifier":
+					url = strings.Replace(url, p.Value, ":identifier", 1)
+				case "chanIds":
+					url = strings.Replace(url, p.Value, ":chanIds", 1)
+				case "workflowId":
+					url = strings.Replace(url, p.Value, ":workflowId", 1)
+				case "customSettings":
+					url = strings.Replace(url, p.Value, ":customSettings", 1)
+				case "statusId":
+					url = strings.Replace(url, p.Value, ":statusId", 1)
+				case "pingSystems":
+					url = strings.Replace(url, p.Value, ":pingSystems", 1)
+				case "tableViewId":
+					url = strings.Replace(url, p.Value, ":tableViewId", 1)
+				}
+			}
+			return url
+		}
+		p.SetListenAddress(prometheusPath).SetMetricsPath(nil)
+	}
+
+	var ginOtelLogFormatter = func(param gin.LogFormatterParams) string {
+		var statusColor, methodColor, resetColor string
+		if param.IsOutputColor() {
+			statusColor = param.StatusCodeColor()
+			methodColor = param.MethodColor()
+			resetColor = param.ResetColor()
+		}
+
+		if param.Latency > time.Minute {
+			param.Latency = param.Latency.Truncate(time.Second)
+		}
+
+		return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %#v traceID=%s\n%s",
+			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+			statusColor, param.StatusCode, resetColor,
+			param.Latency,
+			param.ClientIP,
+			methodColor, param.Method, resetColor,
+			param.Path,
+			trace.SpanContextFromContext(param.Request.Context()).TraceID(),
+			param.ErrorMessage,
+		)
+	}
+
+	r := gin.New()
+	switch {
+	case tp == nil && p == nil:
+		r.Use(otelgin.Middleware("torq-gin"), gin.Logger(), gin.Recovery())
+	case tp == nil && p != nil:
+		r.Use(otelgin.Middleware("torq-gin"), p.HandlerFunc(), gin.Logger(), gin.Recovery())
+	case tp != nil && p == nil:
+		r.Use(otelgin.Middleware("torq-gin", otelgin.WithTracerProvider(tp)),
+			gin.LoggerWithFormatter(ginOtelLogFormatter), gin.Recovery())
+	case tp != nil && p != nil:
+		r.Use(otelgin.Middleware("torq-gin", otelgin.WithTracerProvider(tp)), p.HandlerFunc(),
+			gin.LoggerWithFormatter(ginOtelLogFormatter), gin.Recovery())
+	}
 
 	if err := auth.RefreshCookieFile(cookiePath); err != nil {
 		return errors.Wrap(err, "Refreshing cookie file")

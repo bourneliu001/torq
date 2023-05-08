@@ -19,10 +19,14 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/lncapital/torq/pkg/grpc_helpers"
+	"github.com/lncapital/torq/pkg/prometheus"
 )
 
-// Connect connects to CLN using gRPC.
-func Connect(host string, certificate []byte, key []byte, caCertificate []byte) (*grpc.ClientConn, error) {
+// Connect connects to CLN using gRPC. DO NOT USE THIS UNLESS THE GRPC SETTINGS ARE NOT VALIDATED NOR ACTIVATED IN TORQ.
+func Connect(host string,
+	certificate []byte,
+	key []byte,
+	caCertificate []byte) (*grpc.ClientConn, error) {
 
 	clientCrt, err := tls.X509KeyPair(certificate, key)
 	if err != nil {
@@ -45,7 +49,7 @@ func Connect(host string, certificate []byte, key []byte, caCertificate []byte) 
 		ServerName:   serverName,
 	}
 
-	clMetrics := grpc_helpers.GetClientMetrics()
+	clMetrics := prometheus.GetGrpcClientMetrics()
 	loggerOpts := grpc_helpers.GetLoggingOptions()
 	exemplarFromContext := grpc_helpers.GetExemplarFromContext()
 

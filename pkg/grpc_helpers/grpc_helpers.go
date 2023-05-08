@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -36,17 +35,6 @@ func InterceptorLogger(l zerolog.Logger) logging.Logger {
 			panic(fmt.Sprintf("unknown level %v", lvl))
 		}
 	})
-}
-
-func GetClientMetrics() *grpcprom.ClientMetrics {
-	reg := prometheus.NewRegistry()
-	clMetrics := grpcprom.NewClientMetrics(
-		grpcprom.WithClientHandlingTimeHistogram(
-			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
-		),
-	)
-	reg.MustRegister(clMetrics)
-	return clMetrics
 }
 
 func GetLoggingOptions() []logging.Option {
