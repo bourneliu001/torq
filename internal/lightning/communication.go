@@ -508,7 +508,7 @@ func DecodeInvoice(ctx context.Context,
 	return response, nil
 }
 
-func ChannelStatusUpdate(request lightning_helpers.ChannelStatusUpdateRequest) error {
+func ChannelStatusUpdate(ctx context.Context, request lightning_helpers.ChannelStatusUpdateRequest) error {
 	response := lightning_helpers.ChannelStatusUpdateResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -535,7 +535,8 @@ func ChannelStatusUpdate(request lightning_helpers.ChannelStatusUpdateRequest) e
 	return nil
 }
 
-func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) (lightning_helpers.MoveFundsOffChainResponse, error) {
+func MoveFundsOffChain(ctx context.Context,
+	request lightning_helpers.MoveFundsOffChainRequest) (lightning_helpers.MoveFundsOffChainResponse, error) {
 	response := lightning_helpers.MoveFundsOffChainResponse{
 		Request: request,
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -554,7 +555,7 @@ func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) (ligh
 		if !cache.IsClnServiceActive(request.NodeId) {
 			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
 		}
-		response = cln.MoveFundsOffChain(request)
+		response = cln.MoveFundsOffChain(ctx, request)
 	}
 	if response.Error != "" {
 		return lightning_helpers.MoveFundsOffChainResponse{}, errors.New(response.Error)

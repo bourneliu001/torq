@@ -207,9 +207,12 @@ func NewAddress(ctx context.Context,
 	return lightning_helpers.NewAddressResponse{}
 }
 
-func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+func MoveFundsOffChain(ctx context.Context,
+	request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "MoveFundsOffChain")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 2, request, responseChan)
+	processConcurrent(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.MoveFundsOffChainResponse); ok {
 		return res
@@ -461,6 +464,12 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 					CommunicationResponse: communicationResponse,
 				}
 				return
+			case lightning_helpers.MoveFundsOffChainRequest:
+				responseChan <- lightning_helpers.MoveFundsOffChainResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
 			}
 			responseChan <- nil
 			return
@@ -522,6 +531,10 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 }
 
 func processMoveFundsOffChain(ctx context.Context, request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processMoveFundsOffChain")
+	defer span.End()
+
 	response := lightning_helpers.MoveFundsOffChainResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
