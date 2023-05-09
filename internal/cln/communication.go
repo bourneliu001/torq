@@ -528,6 +528,11 @@ func processMoveFundsOffChain(ctx context.Context, request lightning_helpers.Mov
 	}
 
 	wResp, err := cln.NewNodeClient(connection).WaitSendPay(ctx, &cln.WaitsendpayRequest{PaymentHash: request.RHash})
+	if err != nil {
+		response.Status = wResp.Status.String()
+		response.Error = err.Error()
+		return response
+	}
 
 	response.CommunicationResponse.Status = lightning_helpers.Active
 	response.Status = wResp.Status.String()
