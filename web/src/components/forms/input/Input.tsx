@@ -11,6 +11,8 @@ import { GetColorClass, GetSizeClass, InputColorVaraint, InputSizeVariant } from
 import styles from "./textInput.module.scss";
 import labelStyles from "components/forms/label/label.module.scss";
 import { BasicInputType } from "components/forms/formTypes";
+import { FormErrors, replaceMessageMergeTags } from "components/errors/errors";
+import useTranslations from "services/i18n/useTranslations";
 
 export type InputProps = React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement> &
   BasicInputType;
@@ -27,6 +29,7 @@ export type FormattedInputProps = {
   helpText?: string;
   intercomTarget: string;
   button?: React.ReactNode;
+  errors?: FormErrors;
 } & NumberFormatProps;
 
 function Input({
@@ -41,9 +44,19 @@ function Input({
   helpText,
   intercomTarget,
   button,
+  errors,
   ...inputProps
 }: InputProps | FormattedInputProps) {
+  const { t } = useTranslations();
   const inputId = React.useId();
+
+  if (errors && errors.fields && inputProps.name && errors.fields[inputProps.name]) {
+    const codeOrDescription = errors.fields[inputProps.name][0];
+    const translatedError = t.errors[codeOrDescription.code];
+    const mergedError = replaceMessageMergeTags(translatedError, codeOrDescription.attributes);
+    errorText = mergedError ?? codeOrDescription.description;
+  }
+
   let inputColorClass = GetColorClass(colorVariant);
   if (warningText != undefined) {
     inputColorClass = GetColorClass(InputColorVaraint.warning);
@@ -99,7 +112,7 @@ function Input({
           )}
         </div>
       )}
-      <div className={styles.inputButtonWrapper}>
+      <div className={classNames({ [styles.inputButtonWrapper]: button })}>
         <div className={classNames(styles.inputFieldContainer, { [styles.hasLeftIcon]: !!leftIcon })}>
           {leftIcon && <div className={styles.leftIcon}>{leftIcon}</div>}
           {renderInput()}
