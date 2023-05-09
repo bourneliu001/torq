@@ -180,6 +180,9 @@ func GetChannelsByIds(nodeId int, channelIds []int) ([]ChannelBody, error) {
 	for _, channelId := range channelIds {
 		// Force Response because we don't care about balance accuracy
 		channel := cache.GetChannelState(nodeId, channelId, true)
+		if channel == nil {
+			return []ChannelBody{}, nil
+		}
 		channelSettings := cache.GetChannelSettingByChannelId(channel.ChannelId)
 		var lndShortChannelIdString string
 		if channelSettings.LndShortChannelId != nil {
