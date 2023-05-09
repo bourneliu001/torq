@@ -40,11 +40,14 @@ const baseQueryWithRedirect: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQ
   extraOptions
 ) => {
   const result = await baseQuery(args, api, extraOptions);
-  if (result.error && result.error.status === 401 && window.location.pathname !== "/login") {
-    window.location.href = "/login";
-  }
-  if (result.error && result.error.status === 424 && window.location.pathname !== "/services") {
-    window.location.href = "/services";
+
+  if (result.error) {
+    if (result.error.status === 401 && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+    if (result.error.status === 424 && window.location.pathname !== "/services") {
+      window.location.href = "/services";
+    }
   }
   return result;
 };

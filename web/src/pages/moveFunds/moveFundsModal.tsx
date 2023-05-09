@@ -1,4 +1,8 @@
-import { ArrowSwap20Regular as ModalIcon, ArrowExportUp20Regular as MaxIcon } from "@fluentui/react-icons";
+import {
+  Options20Regular as OptionsIcon,
+  ArrowSwap20Regular as ModalIcon,
+  ArrowExportUp20Regular as MaxIcon,
+} from "@fluentui/react-icons";
 import { useGetChannelsQuery, useGetNodeConfigurationsQuery, useGetNodesWalletBalancesQuery } from "apiSlice";
 import PopoutPageTemplate from "features/templates/popoutPageTemplate/PopoutPageTemplate";
 import { useEffect, useState } from "react";
@@ -7,7 +11,7 @@ import styles from "features/transact/newAddress/newAddress.module.scss";
 import useTranslations from "services/i18n/useTranslations";
 import { nodeConfiguration } from "apiTypes";
 import Select, { SelectOptions } from "features/forms/Select";
-import { Form, Input, InputRow, RadioChips } from "components/forms/forms";
+import { Form, Input, InputRow, RadioChips, Switch } from "components/forms/forms";
 import useLocalStorage from "utils/useLocalStorage";
 import { channel } from "features/channels/channelsTypes";
 import { useAppSelector } from "store/hooks";
@@ -17,11 +21,13 @@ import { components, OptionProps, SingleValueProps } from "react-select";
 import ChannelOption from "./channelOption";
 import { NumberFormatValues } from "react-number-format";
 import { format } from "d3";
-import { userEvents } from "../../utils/userEvents";
-import ErrorSummary from "../../components/errors/ErrorSummary";
-import { FormErrors } from "../../components/errors/errors";
-import { useMoveFundsOffChainMutation } from "./moveFundsApi";
-import { IsNumericOption } from "../../utils/typeChecking";
+import { userEvents } from "utils/userEvents";
+import ErrorSummary from "components/errors/ErrorSummary";
+import { FormErrors, mergeServerError } from "components/errors/errors";
+import { useMoveFundsOffChainMutation, useMoveOnChainFundsMutation } from "./moveFundsApi";
+import { IsNumericOption, IsServerErrorResult } from "utils/typeChecking";
+import { AddressType } from "./moveFundsTypes";
+import { SectionContainer } from "features/section/SectionContainer";
 
 const formatAmount = (amount: number) => format(",.0f")(amount);
 
@@ -33,7 +39,17 @@ type ChannelOption = {
   capacity?: number;
 };
 
-export function IsChannelOption(result: unknown): result is ChannelOption {
+function IsChannelOption(result: unknown): result is ChannelOption {
+  return (
+    result !== null &&
+    typeof result === "object" &&
+    "value" in result &&
+    "label" in result &&
+    typeof (result as { value: unknown; label: string }).value === "number"
+  );
+}
+
+function IsAddressTypeOption(result: unknown): result is SelectOptions {
   return (
     result !== null &&
     typeof result === "object" &&
@@ -46,6 +62,12 @@ export function IsChannelOption(result: unknown): result is ChannelOption {
 function moveFundsModal() {
   const { t } = useTranslations();
   const { track } = userEvents();
+  // Create options for the address type select
+  const addressTypeOptions: Array<SelectOptions> = [
+    { label: t.p2wpkh, value: AddressType.P2WPKH }, // Segwit
+    { label: t.p2tr, value: AddressType.P2TR }, // Taproot
+    { label: t.p2wkh, value: AddressType.P2WKH }, // Wrapped Segwit
+  ];
   const [formErrorState, setFormErrorState] = useState<FormErrors>({});
   // const toastRef = useContext(ToastContext);
   const activeNetwork = useAppSelector(selectActiveNetwork);
@@ -70,13 +92,24 @@ function moveFundsModal() {
   const [channelOptions, setChannelOptions] = useState<Array<ChannelOption>>();
   const [selectedChannelId, setSelectedChannelId] = useLocalStorage<number | undefined>("moveFundsChannel", undefined);
   const [maxAmount, setMaxAmount] = useState<number>(0);
+  // OnChain Options
+  const [targetConf, setTargetConf] = useLocalStorage<number | undefined>("moveFundsTargetConf", undefined);
+  const [satPerVbyte, setSatPerVbyte] = useLocalStorage<number | undefined>("moveFundsSatPerVbyte", undefined);
+  const [spendUnconfirmed, setSpendUnconfirmed] = useLocalStorage<boolean>("moveFundsSpendUnconfirmed", false);
+  const [minConf, setMinConf] = useLocalStorage<number | undefined>("moveFundsMinConf", undefined);
+  const [addressType, setAddressType] = useLocalStorage<AddressType>("moveFundsAddressType", AddressType.P2WPKH);
+  const [sendAll, setSendAll] = useLocalStorage<boolean>("moveFundsSendAll", false);
 
-  const [moveFundsOffChain] = useMoveFundsOffChainMutation();
+  const [expandAdvancedOptions, setExpandAdvancedOptions] = useState<boolean>(true);
+
+  const [moveOffChainFunds, { error: offChainErrors }] = useMoveFundsOffChainMutation();
+  const [moveOnChainFunds, { error: onChainErrors }] = useMoveOnChainFundsMutation();
 
   interface Option {
     label: string;
     value: number;
   }
+
   function handleSwapNodes(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.preventDefault();
     const temp = selectedFromNodeId;
@@ -141,18 +174,15 @@ function moveFundsModal() {
     }
   }, [selectedChannelId, channelOptions, moveChain, nodesWalletBalances]);
 
+  // Merge the errors from offchain into the form errors using offChainErrors
   useEffect(() => {
-    if (amount > maxAmount) {
-      setFormErrorState({
-        server: [{ description: t.amountExceedsMax, attributes: { amount: "" } }],
-        fields: {
-          amount: [t.amountExceedsMax],
-        },
-      });
-    } else {
-      setFormErrorState({});
+    if (IsServerErrorResult(offChainErrors)) {
+      setFormErrorState(mergeServerError(offChainErrors.data, formErrorState));
     }
-  }, [amount, maxAmount]);
+    if (IsServerErrorResult(onChainErrors) && onChainErrors.data) {
+      setFormErrorState(mergeServerError(onChainErrors.data, formErrorState));
+    }
+  }, [offChainErrors, onChainErrors]);
 
   const SingleValue = (props: SingleValueProps<unknown>) => {
     const channel = props.data as ChannelOption;
@@ -187,20 +217,44 @@ function moveFundsModal() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (moveChain === "move-funds-off-chain") {
-      track("Move Funds", {
-        moveFundsChain: moveChain,
+      track("Move Off-Chain Funds", {
         moveFundsFrom: selectedFromNodeId,
         moveFundsTo: selectedToNodeId,
-        moveFundsAmount: amount,
+        moveFundsAmountMsat: amount * 1000,
         moFundsChannel: selectedChannelId,
       });
-      moveFundsOffChain({
+      moveOffChainFunds({
         outgoingNodeId: selectedFromNodeId,
         incomingNodeId: selectedToNodeId,
         channelId: selectedChannelId,
         amountMsat: amount * 1000,
-      }).then((res) => {
-        console.log(res);
+      }).then(() => {
+        setFormErrorState({} as FormErrors);
+      });
+    } else if (moveChain === "move-funds-on-chain") {
+      track("Move On-Chain Funds", {
+        moveFundsFrom: selectedFromNodeId,
+        moveFundsTo: selectedToNodeId,
+        moveFundsAmountMsat: amount,
+        moveFundsTargetConf: targetConf,
+        moveFundsSatPerByte: satPerVbyte,
+        moveFundsSpendUnconfirmed: spendUnconfirmed,
+        moveFundsMinConf: minConf,
+        moveFundsAddressType: addressType,
+        moveFundsSendAll: sendAll,
+      });
+      moveOnChainFunds({
+        outgoingNodeId: selectedFromNodeId,
+        incomingNodeId: selectedToNodeId,
+        amountMsat: amount * 1000,
+        targetConf: targetConf,
+        satPerVbyte: satPerVbyte,
+        spendUnconfirmed: spendUnconfirmed,
+        minConf: minConf,
+        addressType: addressType,
+        sendAll: sendAll,
+      }).then(() => {
+        setFormErrorState({} as FormErrors);
       });
     }
   }
@@ -252,7 +306,6 @@ function moveFundsModal() {
             options={nodeConfigurationOptions}
             value={nodeConfigurationOptions?.find((option) => option.value === selectedFromNodeId)}
           />
-          {/* TODO: Add a flip button */}
           <Select
             intercomTarget={"move-funds-to-input"}
             label={t.to}
@@ -281,20 +334,23 @@ function moveFundsModal() {
         )}
         <Input
           label={t.amount}
+          name={"amount"}
           intercomTarget={"move-funds-amount-input"}
           formatted={true}
           className={styles.single}
+          disabled={sendAll && moveChain === "move-funds-on-chain"}
           thousandSeparator={","}
           value={amount}
           suffix={" sat"}
           onValueChange={(values: NumberFormatValues) => {
             setAmount(values.floatValue as number);
           }}
+          errors={formErrorState}
           infoText={"Maximum amount is: " + formatAmount(maxAmount) + " sat"}
-          errorText={formErrorState?.fields?.amount.toString()}
           button={
             <Button
               buttonColor={ColorVariant.primary}
+              disabled={sendAll && moveChain === "move-funds-on-chain"}
               intercomTarget={"move-funds-max-button"}
               icon={<MaxIcon />}
               onClick={() => {
@@ -304,6 +360,98 @@ function moveFundsModal() {
             />
           }
         />
+        {moveChain === "move-funds-on-chain" && (
+          <>
+            <Switch
+              intercomTarget={"move-funds-send-all"}
+              label={t.SendEverything}
+              checked={sendAll}
+              onChange={(e) => {
+                setSendAll(e.target.checked);
+                if (e.target.checked) {
+                  setAmount(0);
+                }
+              }}
+            />
+            <SectionContainer
+              title={t.AdvancedOptions}
+              icon={OptionsIcon}
+              expanded={expandAdvancedOptions}
+              handleToggle={() => {
+                setExpandAdvancedOptions(!expandAdvancedOptions);
+              }}
+            >
+              <InputRow>
+                <Input
+                  label={t.SatPerVbyte}
+                  name={"satPerVbyte"}
+                  formatted={true}
+                  intercomTarget={"move-funds-sat-per-vbyte-input"}
+                  value={satPerVbyte}
+                  disabled={targetConf !== undefined}
+                  suffix={" sat/vByte"}
+                  onValueChange={(values: NumberFormatValues) => {
+                    if (values.floatValue === 0) {
+                      setSatPerVbyte(undefined);
+                    } else {
+                      setSatPerVbyte(values.floatValue);
+                    }
+                  }}
+                  errors={formErrorState}
+                />
+                <Input
+                  label={t.TargetConfirmations}
+                  name={"targetConf"}
+                  intercomTarget={"move-funds-target-conf-input"}
+                  value={targetConf}
+                  disabled={satPerVbyte !== undefined}
+                  suffix={" blocks"}
+                  formatted={true}
+                  onValueChange={(values: NumberFormatValues) => {
+                    if (values.floatValue === 0) {
+                      setTargetConf(undefined);
+                    } else {
+                      setTargetConf(values.floatValue);
+                    }
+                  }}
+                  errors={formErrorState}
+                />
+              </InputRow>
+              <Select
+                intercomTarget={"move-funds-on-chain-select-address-type"}
+                label={t.addressType}
+                options={addressTypeOptions}
+                value={addressTypeOptions?.find((option) => option.value === addressType)}
+                onChange={(newValue: unknown) => {
+                  if (IsAddressTypeOption(newValue)) {
+                    setAddressType(newValue.value);
+                  }
+                }}
+              />
+              <Input
+                label={t.MinimumConfirmations}
+                intercomTarget={"move-funds-min-conf-input"}
+                value={minConf}
+                type={"number"}
+                onChange={(e) => {
+                  if (Number(e.target.value) === 0) {
+                    setMinConf(undefined);
+                  } else {
+                    setMinConf(Number(e.target.value));
+                  }
+                }}
+              />
+              <Switch
+                label={t.SpendUnconfirmed}
+                intercomTarget={"move-funds-spend-unconfirmed-switch"}
+                value={spendUnconfirmed}
+                onChange={(e) => {
+                  setSpendUnconfirmed(e.target.checked);
+                }}
+              />
+            </SectionContainer>
+          </>
+        )}
         <ButtonWrapper
           rightChildren={
             <Button

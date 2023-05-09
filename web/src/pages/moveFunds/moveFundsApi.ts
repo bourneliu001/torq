@@ -1,5 +1,10 @@
 import { torqApi } from "apiSlice";
-import { MoveFundsOffChainRequest, MoveFundsOffChainResponse } from "./moveFundsTypes";
+import {
+  MoveFundsOffChainRequest,
+  MoveFundsOffChainResponse,
+  MoveOnChainFundsRequest,
+  MoveOnChainFundsResponse,
+} from "./moveFundsTypes";
 
 // Define a service using a base URL and expected endpoints
 export const moveFundsApi = torqApi.injectEndpoints({
@@ -12,7 +17,14 @@ export const moveFundsApi = torqApi.injectEndpoints({
       }),
       invalidatesTags: ["channels"],
     }),
+    moveOnChainFunds: builder.mutation<MoveOnChainFundsResponse, MoveOnChainFundsRequest>({
+      query: (body) => ({
+        url: "/move-funds/on-chain",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useMoveFundsOffChainMutation } = moveFundsApi;
+export const { useMoveFundsOffChainMutation, useMoveOnChainFundsMutation } = moveFundsApi;

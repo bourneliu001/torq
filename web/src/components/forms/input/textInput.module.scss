@@ -21,7 +21,7 @@
 .input {
   color: var(--input-color);
   font-size: var(--input-font-size);
-  background-color: var(--input-default-background);
+  background: var(--input-default-background);
   border: 1px solid transparent;
   border-radius: var(--radius-default);
   width: 100%;

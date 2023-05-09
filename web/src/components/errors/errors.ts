@@ -20,6 +20,10 @@ export type ServerErrorType = {
   errors: FormErrors;
 };
 
+export type ServerErrorResultType = {
+  data: ServerErrorType;
+};
+
 // .map((error: string) => error.split(":")[0])
 export function mergeServerError(serverErrors: ServerErrorType, existingErrors: FormErrors): FormErrors {
   serverErrors = clone(serverErrors);
@@ -55,6 +59,7 @@ export function mergeServerError(serverErrors: ServerErrorType, existingErrors: 
 
 // template messages should use :mergetag: format and attributes should just use mergetag (without colons) as key
 export function replaceMessageMergeTags(message: string, attributes: Record<string, string>): string {
+  if (!message) return message;
   const words = message.split(" ");
   for (const word of words) {
     if (word.startsWith(":") && word.endsWith(":")) {
