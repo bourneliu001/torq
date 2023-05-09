@@ -46,3 +46,4 @@ docker/docker-compose.yml
 Notes
 
 e2e_videos
+/cmd/torq/__debug_bin
