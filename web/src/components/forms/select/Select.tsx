@@ -18,6 +18,7 @@ import styles from "./select.module.scss";
 import classNames from "classnames";
 import { GetColorClass, GetSizeClass, InputColorVaraint, InputSizeVariant } from "../variants";
 import { useId } from "react";
+import { SelectComponents } from "react-select/dist/declarations/src/components";
 
 export type SelectOptionType = { value: string; label: string };
 
@@ -101,6 +102,7 @@ export type SelectProps = Props & {
   warningText?: string;
   errorText?: string;
   intercomTarget: string;
+  selectComponents?: Partial<SelectComponents<unknown, boolean, GroupBase<unknown>>> | undefined;
 };
 
 export default function Select({
@@ -110,6 +112,7 @@ export default function Select({
   warningText,
   errorText,
   intercomTarget,
+  selectComponents,
   ...selectProps
 }: SelectProps) {
   const DropdownIndicator = (props: DropdownIndicatorProps) => {
@@ -159,7 +162,7 @@ export default function Select({
       )}
       <ReactSelect
         id={selectProps.id || inputId}
-        components={{ DropdownIndicator, MultiValueRemove, ClearIndicator }}
+        components={{ DropdownIndicator, MultiValueRemove, ClearIndicator, ...selectComponents }}
         className={selectProps.className}
         styles={customStyles}
         {...selectProps}

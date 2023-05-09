@@ -13,10 +13,15 @@
     color: var(--input-label-color);
   }
 }
+.inputButtonWrapper {
+  display: grid;
+  grid-template-columns: auto min-content;
+  grid-gap: 8px;
+}
 .input {
   color: var(--input-color);
   font-size: var(--input-font-size);
-  background-color: var(--input-default-background);
+  background: var(--input-default-background);
   border: 1px solid transparent;
   border-radius: var(--radius-default);
   width: 100%;

@@ -1,9 +1,11 @@
 import RawSelect, { SelectOptionType } from "components/forms/select/Select";
-import { Props } from "react-select";
+import { GroupBase, Props } from "react-select";
+import { SelectComponents } from "react-select/dist/declarations/src/components";
 
 type selectProps = {
   label: string;
   intercomTarget: string;
+  selectComponents?: Partial<SelectComponents<unknown, boolean, GroupBase<unknown>>> | undefined;
 } & Props;
 
 export type SelectOptions = {
@@ -13,7 +15,16 @@ export type SelectOptions = {
 };
 
 function Select(props: selectProps) {
-  return <RawSelect intercomTarget={props.intercomTarget} label={props.label} options={props.options} value={props.value} onChange={props.onChange} />;
+  return (
+    <RawSelect
+      selectComponents={props.selectComponents}
+      intercomTarget={props.intercomTarget}
+      label={props.label}
+      options={props.options}
+      value={props.value}
+      onChange={props.onChange}
+    />
+  );
 }
 
 export default Select;

@@ -525,3 +525,30 @@ func ChannelStatusUpdate(request lightning_helpers.ChannelStatusUpdateRequest) e
 	}
 	return nil
 }
+
+func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) (lightning_helpers.MoveFundsOffChainResponse, error) {
+	response := lightning_helpers.MoveFundsOffChainResponse{
+		Request: request,
+		CommunicationResponse: lightning_helpers.CommunicationResponse{
+			Status: lightning_helpers.Inactive,
+		},
+	}
+
+	nodeConnectionDetails := cache.GetNodeConnectionDetails(request.NodeId)
+	switch nodeConnectionDetails.Implementation {
+	case core.LND:
+		if !cache.IsLndServiceActive(request.NodeId) {
+			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
+		}
+		response = lnd.MoveFundsOffChain(request)
+	case core.CLN:
+		if !cache.IsClnServiceActive(request.NodeId) {
+			return lightning_helpers.MoveFundsOffChainResponse{}, ServiceInactiveError
+		}
+		response = cln.MoveFundsOffChain(request)
+	}
+	if response.Error != "" {
+		return lightning_helpers.MoveFundsOffChainResponse{}, errors.New(response.Error)
+	}
+	return response, nil
+}

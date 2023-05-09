@@ -105,7 +105,13 @@
 }
 
 .disabled {
-  --input-default-background: var(--color-primary-layer-1);
+  --input-default-background: repeating-linear-gradient(
+    45deg,
+    var(--color-primary-layer-2),
+    var(--color-primary-layer-2) 10px,
+    var(--color-primary-layer-3) 10px,
+    var(--color-primary-layer-3) 20px
+  );
   --input-hover-background: var(--color-primary-layer-1);
   --input-checked-background: var(--color-primary-layer-2);
   --input-focus-background: var(--color-primary-layer-1);

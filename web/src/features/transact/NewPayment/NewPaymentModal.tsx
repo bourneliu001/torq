@@ -15,12 +15,13 @@ import { PaymentProcessingErrors } from "./paymentErrorMessages";
 import OnChanPaymentDetails from "./OnChanPaymentDetails";
 import { PaymentType, PaymentTypeLabel } from "./types";
 import { nodeConfiguration } from "apiTypes";
-import Select from "features/forms/Select";
+import Select, { SelectOptions } from "features/forms/Select";
 import useTranslations from "services/i18n/useTranslations";
 import InvoicePayment from "./InvoicePayment";
 import { InvoicePaymentResponse } from "./InvoicePaymentResponse";
 import { OnChainPaymentResponse } from "./OnChainPaymentResponse";
 import Note from "features/note/Note";
+import { IsNumericOption } from "../../../utils/typeChecking";
 
 // RegEx used to check what type of destination the user enters.
 // You can test them out here: https://regex101.com/r/OiXAlz/1
@@ -42,12 +43,7 @@ function NewPaymentModal() {
   const [sendCoinsMutation, response] = useSendOnChainMutation();
 
   const { data: nodeConfigurations } = useGetNodeConfigurationsQuery();
-  let nodeConfigurationOptions: Array<{ value: number; label?: string }> = [{ value: 0, label: "Select a local node" }];
-  if (nodeConfigurations) {
-    nodeConfigurationOptions = nodeConfigurations.map((nodeConfiguration: nodeConfiguration) => {
-      return { value: nodeConfiguration.nodeId, label: nodeConfiguration.name };
-    });
-  }
+  const [nodeConfigurationOptions, setNodeConfigurationOptions] = useState<Array<SelectOptions>>();
 
   const [selectedNodeId, setSelectedNodeId] = useState<number>(0);
   const [destination, setDestination] = useState("");
@@ -64,10 +60,16 @@ function NewPaymentModal() {
   const [amount, setAmount] = useState<number>(0);
 
   useEffect(() => {
-    if (nodeConfigurationOptions !== undefined) {
-      setSelectedNodeId(nodeConfigurationOptions[0].value);
+    if (nodeConfigurations) {
+      const options = nodeConfigurations.map((nodeConfiguration: nodeConfiguration) => {
+        return { value: nodeConfiguration.nodeId, label: nodeConfiguration.name };
+      });
+      setNodeConfigurationOptions(options);
+      if (options.length > 0) {
+        setSelectedNodeId(options[0].value);
+      }
     }
-  }, [nodeConfigurationOptions]);
+  }, [nodeConfigurations]);
 
   function onNewPaymentMessage(event: MessageEvent<string>) {
     const response = JSON.parse(event.data);
@@ -82,9 +84,9 @@ function NewPaymentModal() {
 
   function onNewPaymentResponse(message: NewPaymentResponse) {
     setLnInvoiceResponses((prev) => [...prev, message]);
-    if (message.status === "SUCCEEDED") {
+    if (message.paymentStatus === "SUCCEEDED") {
       setProcessState(ProgressStepState.completed);
-    } else if (message.status === "FAILED") {
+    } else if (message.paymentStatus === "FAILED") {
       setPaymentProcessingError(PaymentProcessingErrors.get(message.failureReason) ?? "UNKNOWN_ERROR");
       setProcessState(ProgressStepState.error);
     }
@@ -235,14 +237,14 @@ function NewPaymentModal() {
           <Select
             intercomTarget={"new-payment-select-node"}
             label={t.yourNode}
-            onChange={
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (newValue: any) => {
-                setSelectedNodeId(newValue?.value);
+            onChange={(newValue) => {
+              if (IsNumericOption(newValue)) {
+                console.log(newValue.value);
+                setSelectedNodeId(newValue.value);
               }
-            }
+            }}
             options={nodeConfigurationOptions}
-            value={nodeConfigurationOptions.find((option) => option.value === selectedNodeId)}
+            value={nodeConfigurationOptions?.find((option) => option.value === selectedNodeId)}
           />
           <div className={styles.destination}>
             <div className={styles.destinationWrapper}>

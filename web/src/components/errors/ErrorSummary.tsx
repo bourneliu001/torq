@@ -30,7 +30,12 @@ const ErrorSummary = ({ errors, title }: errorSummaryType) => {
             serverErrors.map((error, index) => {
               return <p key={index}>{error}</p>;
             })}
-          {errors.fields && <p>See form error{Object.keys(errors.fields).length > 1 && <>s</>}</p>}
+          {errors.fields && (
+            <p>
+              {t.SeeFormErrors}
+              {Object.keys(errors.fields).length > 1 && <>s</>}
+            </p>
+          )}
         </Note>
       )}
     </>

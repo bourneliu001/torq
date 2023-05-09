@@ -8,14 +8,15 @@
   gap: 4px;
 }
 .sectionTitleContainer {
-  border-bottom: 1px solid var(--content-subtle);
-  margin-bottom: 16px;
 }
 .sidebarSectionContent {
   display: flex;
   flex-direction: column;
   row-gap: 12px;
+  margin-top: 16px;
   margin-bottom: 16px;
+  margin-left: 16px;
+  margin-right: 16px;
 }
 .sidebarIcon {
   padding: 8px;
@@ -23,4 +24,8 @@
   align-items: center;
   justify-items: center;
   font-size: 20px;
+}
+.sectionContainer {
+  background-color: var(--color-primary-layer-1);
+  border-radius: var(--radius-default);
 }

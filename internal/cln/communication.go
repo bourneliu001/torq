@@ -185,6 +185,16 @@ func NewAddress(request lightning_helpers.NewAddressRequest) lightning_helpers.N
 	return lightning_helpers.NewAddressResponse{}
 }
 
+func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+	responseChan := make(chan any)
+	processConcurrent(context.Background(), 2, request, responseChan)
+	response := <-responseChan
+	if res, ok := response.(lightning_helpers.MoveFundsOffChainResponse); ok {
+		return res
+	}
+	return lightning_helpers.MoveFundsOffChainResponse{}
+}
+
 func OpenChannel(request lightning_helpers.OpenChannelRequest) lightning_helpers.OpenChannelResponse {
 	responseChan := make(chan any)
 	processConcurrent(context.Background(), 300, request, responseChan)
@@ -463,9 +473,72 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 	case lightning_helpers.DecodeInvoiceRequest:
 		responseChan <- processDecodeInvoiceRequest(ctx, r)
 		return
+	case lightning_helpers.MoveFundsOffChainRequest:
+		responseChan <- processMoveFundsOffChain(ctx, r)
+		return
 	}
 
 	responseChan <- nil
+}
+
+func processMoveFundsOffChain(ctx context.Context, request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+	response := lightning_helpers.MoveFundsOffChainResponse{
+		CommunicationResponse: lightning_helpers.CommunicationResponse{
+			Status: lightning_helpers.Inactive,
+		},
+		Request: request,
+	}
+
+	// short channel id from channel cache
+	channel := cache.GetChannelSettingByChannelId(request.ChannelId)
+	if channel.ShortChannelId == nil {
+		response.Error = fmt.Sprintf("Channel %d not found in cache", request.ChannelId)
+		return response
+	}
+
+	connection, err := getConnection(request.NodeId)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to obtain a GRPC connection.")
+		response.Error = err.Error()
+		return response
+	}
+
+	route := []*cln.SendpayRoute{{
+		Id:         request.RHash,
+		AmountMsat: &cln.Amount{Msat: uint64(request.AmountMsat)},
+		Channel:    *channel.ShortChannelId,
+	}}
+
+	p := &cln.SendpayRequest{
+		Route:         route,
+		PaymentHash:   request.RHash,
+		Label:         nil,
+		AmountMsat:    nil,
+		Bolt11:        nil,
+		PaymentSecret: nil,
+		Partid:        nil,
+		Localinvreqid: nil,
+		Groupid:       nil,
+	}
+	resp, err := cln.NewNodeClient(connection).SendPay(ctx, p)
+	if err != nil {
+		response.Status = resp.Status.String()
+		response.Error = err.Error()
+		return response
+	}
+
+	wResp, err := cln.NewNodeClient(connection).WaitSendPay(ctx, &cln.WaitsendpayRequest{PaymentHash: request.RHash})
+	if err != nil {
+		response.Status = wResp.Status.String()
+		response.Error = err.Error()
+		return response
+	}
+
+	response.CommunicationResponse.Status = lightning_helpers.Active
+	response.Status = wResp.Status.String()
+
+	return response
+
 }
 
 func processGetInfoRequest(ctx context.Context,
@@ -1113,8 +1186,7 @@ func prepareOpenRequest(request lightning_helpers.OpenChannelRequest) (*cln.Fund
 		Id: pubKeyHex,
 
 		// This is the amount we are putting into the channel (channel size)
-		Amount: &cln.AmountOrAll{Value: &cln.AmountOrAll_Amount{Amount: &cln.Amount{Msat: uint64(request.LocalFundingAmount * 1_000)},
-		}},
+		Amount: &cln.AmountOrAll{Value: &cln.AmountOrAll_Amount{Amount: &cln.Amount{Msat: uint64(request.LocalFundingAmount * 1_000)}}},
 	}
 
 	// The amount to give the other node in the opening process.
@@ -1256,6 +1328,7 @@ func processNewInvoiceRequest(ctx context.Context,
 
 	response.PaymentAddress = hex.EncodeToString(resp.PaymentHash)
 	response.PaymentRequest = resp.Bolt11
+	response.RHash = resp.PaymentHash
 	response.Status = lightning_helpers.Active
 	return response
 }

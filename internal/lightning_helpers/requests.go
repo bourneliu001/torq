@@ -294,3 +294,13 @@ type DecodeInvoiceRequest struct {
 	CommunicationRequest
 	Invoice string `json:"invoice"`
 }
+
+type MoveFundsOffChainRequest struct {
+	CommunicationRequest
+	ChannelId      int    `json:"channelId"`
+	RHash          []byte `json:"rHash"`
+	PaymentAddress string `json:"paymentAddress"`
+	OutgoingNodeId int    `json:"outgoingNodeId"`
+	IncomingNodeId int    `json:"incomingNodeId"`
+	AmountMsat     int64  `json:"amountMsat"`
+}

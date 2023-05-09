@@ -130,6 +130,7 @@ type NewInvoiceResponse struct {
 	CommunicationResponse
 	PaymentRequest string `json:"paymentRequest"`
 	AddIndex       uint64 `json:"addIndex"`
+	RHash          []byte `json:"rHash"`
 	PaymentAddress string `json:"paymentAddress"`
 }
 
@@ -228,4 +229,10 @@ type DecodeInvoiceResponse struct {
 	Private           bool        `json:"private"`
 	Features          FeatureMap  `json:"features"`
 	RouteHints        []RouteHint `json:"routeHints"`
+}
+
+type MoveFundsOffChainResponse struct {
+	Request MoveFundsOffChainRequest `json:"request"`
+	CommunicationResponse
+	Status string `json:"status"`
 }

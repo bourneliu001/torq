@@ -10,7 +10,7 @@ import { useNavigate } from "react-router";
 import styles from "./newInvoice.module.scss";
 import useTranslations from "services/i18n/useTranslations";
 import { nodeConfiguration } from "apiTypes";
-import Select from "features/forms/Select";
+import Select, { SelectOptions } from "features/forms/Select";
 import LargeAmountInput from "components/forms/largeAmountInput/LargeAmountInput";
 import { SectionContainer } from "features/section/SectionContainer";
 import Input from "components/forms/input/Input";
@@ -25,18 +25,21 @@ function NewInvoiceModal() {
 
   const { data: nodeConfigurations } = useGetNodeConfigurationsQuery();
   const [newInvoiceMutation, newInvoiceResponse] = useNewInvoiceMutation();
-
-  let nodeConfigurationOptions: Array<{ value: number; label?: string }> = [{ value: 0, label: "Select a local node" }];
-  if (nodeConfigurations) {
-    nodeConfigurationOptions = nodeConfigurations.map((node: nodeConfiguration) => {
-      return { value: node.nodeId, label: `${node.name} - ${node.grpcAddress}` };
-    });
-  }
+  const [nodeConfigurationOptions, setNodeConfigurationOptions] = useState<Array<SelectOptions>>();
 
   useEffect(() => {
-    if (nodeConfigurationOptions !== undefined) {
-      setSelectedNodeId(nodeConfigurationOptions[0].value);
+    if (nodeConfigurations) {
+      const options = nodeConfigurations.map((nodeConfiguration: nodeConfiguration) => {
+        return { value: nodeConfiguration.nodeId, label: nodeConfiguration.name };
+      });
+      setNodeConfigurationOptions(options);
+      if (options.length > 0) {
+        setSelectedNodeId(options[0].value);
+      }
     }
+  }, [nodeConfigurations]);
+
+  useEffect(() => {
     if (newInvoiceResponse.isSuccess) {
       setDoneState(ProgressStepState.completed);
     }
@@ -46,9 +49,9 @@ function NewInvoiceModal() {
     if (newInvoiceResponse.isLoading) {
       setDoneState(ProgressStepState.processing);
     }
-  }, [nodeConfigurationOptions, newInvoiceResponse]);
+  }, [newInvoiceResponse]);
 
-  const [selectedNodeId, setSelectedNodeId] = useState<number>(nodeConfigurationOptions[0].value);
+  const [selectedNodeId, setSelectedNodeId] = useState<number>();
   const [amountSat, setAmountSat] = useState<number | undefined>(undefined);
   const [expirySeconds, setExpirySeconds] = useState<number | undefined>(undefined);
   const [memo, setMemo] = useState<string | undefined>(undefined);
@@ -65,6 +68,7 @@ function NewInvoiceModal() {
   };
 
   const handleClickNext = () => {
+    if (selectedNodeId === undefined) return;
     setStepIndex(1);
     setDetailsState(ProgressStepState.completed);
     setDoneState(ProgressStepState.processing);
@@ -123,7 +127,7 @@ function NewInvoiceModal() {
               }
             }
             options={nodeConfigurationOptions}
-            value={nodeConfigurationOptions.find((option) => option.value === selectedNodeId)}
+            value={nodeConfigurationOptions?.find((option) => option.value === selectedNodeId)}
           />
           <textarea
             id={"destination"}
@@ -182,7 +186,7 @@ function NewInvoiceModal() {
 
         <ProgressTabContainer>
           <NewInvoiceResponseStep
-            selectedNodeId={selectedNodeId}
+            selectedNodeId={selectedNodeId || 0}
             amount={amountSat ? amountSat : 0}
             clearFlow={() => {
               setDetailsState(ProgressStepState.active);

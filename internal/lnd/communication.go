@@ -98,6 +98,16 @@ type lightningService struct {
 	limit chan struct{}
 }
 
+func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+	responseChan := make(chan any)
+	processConcurrent(context.Background(), 20, request, responseChan)
+	response := <-responseChan
+	if res, ok := response.(lightning_helpers.MoveFundsOffChainResponse); ok {
+		return res
+	}
+	return lightning_helpers.MoveFundsOffChainResponse{}
+}
+
 func Information(request lightning_helpers.InformationRequest) lightning_helpers.InformationResponse {
 	responseChan := make(chan any)
 	processSequential(context.Background(), 2, request, responseChan)
@@ -534,6 +544,9 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 	}()
 
 	switch r := req.(type) {
+	case lightning_helpers.MoveFundsOffChainRequest:
+		responseChan <- processMoveFundsOffChain(ctx, r)
+		return
 	case lightning_helpers.InformationRequest:
 		responseChan <- processGetInfoRequest(ctx, r)
 		return
@@ -1227,6 +1240,7 @@ func processNewInvoiceRequest(ctx context.Context,
 	response.PaymentRequest = resp.GetPaymentRequest()
 	response.AddIndex = resp.GetAddIndex()
 	response.PaymentAddress = hex.EncodeToString(resp.GetPaymentAddr())
+	response.RHash = resp.GetRHash()
 	response.Status = lightning_helpers.Active
 	return response
 }
@@ -2153,6 +2167,82 @@ func processWalletBalanceRequest(ctx context.Context,
 	response.ConfirmedBalance = wb.ConfirmedBalance
 	response.TotalBalance = wb.TotalBalance
 	response.LockedBalance = wb.LockedBalance
+
+	return response
+}
+
+// processMoveFundsOffChain
+func processMoveFundsOffChain(ctx context.Context,
+	request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+
+	response := lightning_helpers.MoveFundsOffChainResponse{
+		CommunicationResponse: lightning_helpers.CommunicationResponse{
+			Status: lightning_helpers.Inactive,
+		},
+		Request: request,
+	}
+
+	sourceConn, err := getConnection(request.OutgoingNodeId)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to obtain a GRPC connection for source node.")
+		response.Error = err.Error()
+		return response
+	}
+
+	// Get the lnd short channel id for the destination node
+	channel := cache.GetChannelSettingByChannelId(request.ChannelId)
+	lndShortChannelId := channel.LndShortChannelId
+	if lndShortChannelId == nil {
+		response.Error = fmt.Sprintf("could not find lnd short channel id for channel id: %d", request.ChannelId)
+	}
+
+	// Get the public key for the destination node
+	incomingNodeSettings := cache.GetNodeSettingsByNodeId(request.IncomingNodeId)
+
+	// Create the Route
+	pubBytes, err := hex.DecodeString(incomingNodeSettings.PublicKey)
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	paymentAddr, err := hex.DecodeString(request.PaymentAddress)
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	// Send the payment to the destination node
+	sourceRouterClient := routerrpc.NewRouterClient(sourceConn)
+	route, err := sourceRouterClient.BuildRoute(
+		ctx,
+		&routerrpc.BuildRouteRequest{
+			AmtMsat:        request.AmountMsat,
+			FinalCltvDelta: 40,
+			OutgoingChanId: *lndShortChannelId,
+			PaymentAddr:    paymentAddr,
+			HopPubkeys:     [][]byte{pubBytes},
+		})
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	routerPaymentRequest := routerrpc.SendToRouteRequest{
+		PaymentHash: request.RHash,
+		Route:       route.Route,
+	}
+	htlcAttempts, err := sourceRouterClient.SendToRouteV2(ctx, &routerPaymentRequest)
+	if err != nil {
+		response.Error = err.Error()
+		return response
+	}
+
+	response.Status = htlcAttempts.Status.String()
+	if htlcAttempts.Failure != nil {
+		response.Error = htlcAttempts.Failure.String()
+		return response
+	}
 
 	return response
 }
