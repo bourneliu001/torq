@@ -2228,19 +2228,6 @@ func processMoveFundsOffChain(ctx context.Context,
 		return response
 	}
 
-	//sourceClient := lnrpc.NewLightningClient(sourceConn)
-	//routeResp, err := sourceClient.QueryRoutes(ctx, &lnrpc.QueryRoutesRequest{
-	//	PubKey:            "",
-	//	AmtMsat:           request.AmountMsat,
-	//	DestCustomRecords: nil,
-	//	OutgoingChanId:    *lndShortChannelId,
-	//})
-	//
-	//if err != nil {
-	//	response.Error = err.Error()
-	//	return response
-	//}
-
 	routerPaymentRequest := routerrpc.SendToRouteRequest{
 		PaymentHash: request.RHash,
 		Route:       route.Route,

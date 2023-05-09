@@ -304,10 +304,3 @@ type MoveFundsOffChainRequest struct {
 	IncomingNodeId int    `json:"incomingNodeId"`
 	AmountMsat     int64  `json:"amountMsat"`
 }
-
-type MoveFundsOnChainRequest struct {
-	CommunicationRequest
-	OutgoingNodeId int   `json:"outgoingNodeId"`
-	IncomingNodeId int   `json:"incomingNodeId"`
-	AmountSat      int64 `json:"amountSat"`
-}

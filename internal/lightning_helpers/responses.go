@@ -236,10 +236,3 @@ type MoveFundsOffChainResponse struct {
 	CommunicationResponse
 	Status string `json:"status"`
 }
-
-type MoveFundsOnChainResponse struct {
-	Request MoveFundsOnChainRequest `json:"request"`
-	CommunicationResponse
-	Status string `json:"status"`
-	TxId   string `json:"txId"`
-}
