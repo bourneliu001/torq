@@ -17,7 +17,7 @@ func moveFundsOffChainHandler(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		server_errors.SendBadRequestFromError(c, err)
 		return
 	}
 
@@ -28,6 +28,10 @@ func moveFundsOffChainHandler(c *gin.Context) {
 		RPreImage:            nil,
 		ValueMsat:            &request.AmountMsat,
 	})
+	if err != nil {
+		server_errors.SendBadRequestFromError(c, err)
+		return
+	}
 
 	response, err := lightning.MoveFundsOffChain(lightning_helpers.MoveFundsOffChainRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.OutgoingNodeId},
@@ -39,7 +43,7 @@ func moveFundsOffChainHandler(c *gin.Context) {
 		PaymentAddress:       invoiceResponse.PaymentAddress,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		server_errors.SendBadRequestFromError(c, err)
 		return
 	}
 
@@ -61,7 +65,7 @@ func moveOnChainFundsHandler(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		server_errors.SendBadRequestFromError(c, err)
 		return
 	}
 
@@ -80,6 +84,10 @@ func moveOnChainFundsHandler(c *gin.Context) {
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.IncomingNodeId},
 		Type:                 lightning_helpers.P2WKH,
 	})
+	if err != nil {
+		server_errors.SendBadRequestFromError(c, err)
+		return
+	}
 
 	label := "Moving funds between nodes"
 	// Send the funds on chain
@@ -94,6 +102,10 @@ func moveOnChainFundsHandler(c *gin.Context) {
 		SpendUnconfirmed:     request.SpendUnconfirmed,
 		SendAll:              request.SendAll,
 	})
+	if err != nil {
+		server_errors.SendBadRequestFromError(c, err)
+		return
+	}
 
 	c.JSON(http.StatusOK, response)
 }
