@@ -145,6 +145,7 @@ type NodeConnectionDetails struct {
 	KeyFileBytes           []byte
 	CaCertificateFileBytes []byte
 	CustomSettings         core.NodeConnectionDetailCustomSettings
+	NodeCssColour          *string
 }
 
 func ServiceCacheHandler(ch <-chan ServiceCache, ctx context.Context) {

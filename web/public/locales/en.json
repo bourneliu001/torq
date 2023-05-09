@@ -485,5 +485,6 @@
     "setting": "Setting"
   },
   "privateChannelLinksUnavailable": "Channel private, links unavailable",
-  "refresh": "Refresh"
+  "refresh": "Refresh",
+  "nodeColour": "Node Colour"
 }

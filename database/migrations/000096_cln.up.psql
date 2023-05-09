@@ -1,0 +1,1 @@
+ALTER TABLE node_connection_details ADD COLUMN node_css_colour TEXT;

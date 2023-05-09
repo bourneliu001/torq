@@ -15,7 +15,18 @@ function Row<T>(props: RowProp<T>) {
         [cellStyles.totalCell]: props.isTotalsRow,
       })}
       key={"first-cell-" + props.rowIndex}
-    />
+    >
+      {props.rowFirstCellRenderer &&
+        props.rowFirstCellRenderer(
+          props.row,
+          props.rowIndex,
+          props.columns[0],
+          0,
+          props.isTotalsRow,
+          props.maxRow,
+          props.groupedBy
+        )}
+    </div>
   );
 
   if (props.selectable) {

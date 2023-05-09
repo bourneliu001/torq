@@ -90,6 +90,7 @@ export type channel = {
   peerLocalBalance: number;
   peerGauge: number;
   private: boolean;
+  nodeCssColour?: string;
 };
 
 export type PolicyInterface = {
