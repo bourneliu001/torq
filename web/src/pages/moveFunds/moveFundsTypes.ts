@@ -1,8 +1,8 @@
 export type MoveFundsOffChainRequest = {
-  outgoingNodeId: string;
-  incomingNodeId: string;
+  outgoingNodeId: number;
+  incomingNodeId: number;
   amountMsat: number;
-  channelId: string;
+  channelId: number;
 };
 
 export type MoveFundsOffChainResponse = {
@@ -16,8 +16,8 @@ export enum AddressType {
 }
 
 export type MoveOnChainFundsRequest = {
-  outgoingNodeId: string;
-  incomingNodeId: string;
+  outgoingNodeId: number;
+  incomingNodeId: number;
   amountMsat: number;
   targetConf?: number;
   satPerVbyte?: number;

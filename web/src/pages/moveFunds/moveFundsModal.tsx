@@ -49,7 +49,7 @@ function IsChannelOption(result: unknown): result is ChannelOption {
   );
 }
 
-function IsAddressTypeOption(result: unknown): result is SelectOptions {
+function IsAddressTypeOption(result: unknown): result is { value: AddressType; label: string } {
   return (
     result !== null &&
     typeof result === "object" &&
@@ -82,11 +82,8 @@ function moveFundsModal() {
     isSuccess: boolean;
   }>({ network: activeNetwork });
   const [nodeConfigurationOptions, setNodeConfigurationOptions] = useState<Array<SelectOptions>>();
-  const [selectedFromNodeId, setSelectedFromNodeId] = useLocalStorage<SelectOptions | undefined>(
-    "moveFundsFrom",
-    undefined
-  );
-  const [selectedToNodeId, setSelectedToNodeId] = useLocalStorage<SelectOptions | undefined>("moveFundsTo", undefined);
+  const [selectedFromNodeId, setSelectedFromNodeId] = useLocalStorage<number | undefined>("moveFundsFrom", undefined);
+  const [selectedToNodeId, setSelectedToNodeId] = useLocalStorage<number | undefined>("moveFundsTo", undefined);
   const [amount, setAmount] = useLocalStorage<number>("moveFundsAmount", 0);
   const [moveChain, setMoveChain] = useLocalStorage<string>("moveFundsChain", "move-funds-off-chain");
   const [channelOptions, setChannelOptions] = useState<Array<ChannelOption>>();
@@ -217,6 +214,8 @@ function moveFundsModal() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (moveChain === "move-funds-off-chain") {
+      if (!selectedChannelId || !selectedToNodeId || !selectedFromNodeId) return;
+
       track("Move Off-Chain Funds", {
         moveFundsFrom: selectedFromNodeId,
         moveFundsTo: selectedToNodeId,
@@ -232,6 +231,7 @@ function moveFundsModal() {
         setFormErrorState({} as FormErrors);
       });
     } else if (moveChain === "move-funds-on-chain") {
+      if (!selectedToNodeId || !selectedFromNodeId) return;
       track("Move On-Chain Funds", {
         moveFundsFrom: selectedFromNodeId,
         moveFundsTo: selectedToNodeId,
@@ -387,7 +387,7 @@ function moveFundsModal() {
                   name={"satPerVbyte"}
                   formatted={true}
                   intercomTarget={"move-funds-sat-per-vbyte-input"}
-                  value={satPerVbyte}
+                  value={satPerVbyte || ""}
                   disabled={targetConf !== undefined}
                   suffix={" sat/vByte"}
                   onValueChange={(values: NumberFormatValues) => {
@@ -403,7 +403,7 @@ function moveFundsModal() {
                   label={t.TargetConfirmations}
                   name={"targetConf"}
                   intercomTarget={"move-funds-target-conf-input"}
-                  value={targetConf}
+                  value={targetConf || ""}
                   disabled={satPerVbyte !== undefined}
                   suffix={" blocks"}
                   formatted={true}
@@ -431,7 +431,7 @@ function moveFundsModal() {
               <Input
                 label={t.MinimumConfirmations}
                 intercomTarget={"move-funds-min-conf-input"}
-                value={minConf}
+                value={minConf || ""}
                 type={"number"}
                 onChange={(e) => {
                   if (Number(e.target.value) === 0) {
@@ -444,7 +444,7 @@ function moveFundsModal() {
               <Switch
                 label={t.SpendUnconfirmed}
                 intercomTarget={"move-funds-spend-unconfirmed-switch"}
-                value={spendUnconfirmed}
+                checked={spendUnconfirmed}
                 onChange={(e) => {
                   setSpendUnconfirmed(e.target.checked);
                 }}
