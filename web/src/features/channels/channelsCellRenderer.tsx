@@ -32,6 +32,7 @@ export default function channelsCellRenderer(
     return (
       <ChannelCell
         alias={row.peerAlias}
+        color={row.nodeCssColour}
         open={true}
         channelId={row.channelId}
         nodeId={row.nodeId}

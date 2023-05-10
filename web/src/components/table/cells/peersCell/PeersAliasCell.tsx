@@ -16,6 +16,7 @@ import { userEvents } from "utils/userEvents";
 
 interface ChannelCell {
   alias: string;
+  color?: string;
   peerNodeId: number;
   torqNodeId: number;
   connectionStatus: ConnectionStatus;
@@ -115,8 +116,16 @@ function ChannelCell(props: ChannelCell) {
   );
 
   return (
-    <div className={classNames(styles.cell, styles.alignLeft, props.className, styles.channelCellWrapper, styles.locked)}>
-      {content}
+    <div
+      className={classNames(styles.cell, styles.alignLeft, props.className, styles.channelCellWrapper, styles.locked)}
+    >
+      <div
+        className={styles.colorBar}
+        style={{
+          backgroundColor: props.color,
+        }}
+      />
+      <div className={styles.contentWrapper}>{content}</div>
     </div>
   );
 }

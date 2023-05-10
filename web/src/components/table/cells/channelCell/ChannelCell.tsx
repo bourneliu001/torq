@@ -14,6 +14,7 @@ import { userEvents } from "utils/userEvents";
 
 interface ChannelCell {
   alias: string;
+  color?: string;
   channelId: number;
   nodeId: number;
   open?: boolean;
@@ -90,8 +91,14 @@ function ChannelCell(props: ChannelCell) {
   );
 
   return (
-    <div className={classNames(cellStyles.cell, cellStyles.alignLeft, props.className, styles.channelCellWrapper)}>
-      {content}
+    <div className={classNames(cellStyles.cell, styles.peerNameCell, cellStyles.alignLeft, props.className)}>
+      <div
+        className={cellStyles.colorBar}
+        style={{
+          backgroundColor: props.color,
+        }}
+      />
+      <div className={classNames(styles.channelCellWrapper)}>{content}</div>
     </div>
   );
 }

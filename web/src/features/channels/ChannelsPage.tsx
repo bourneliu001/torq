@@ -36,7 +36,6 @@ import { TableResponses, ViewResponse } from "features/viewManagement/types";
 import * as Routes from "constants/routes";
 import { createCsvFile } from "utils/JsonTableToCsv";
 import { userEvents } from "utils/userEvents";
-import channelsRowFirstCellRenderer from "./channelsRowFirstCellRenderer";
 
 function useMaximums(data: Array<channel>): channel | undefined {
   if (!data || !data.length) {
@@ -225,7 +224,6 @@ function ChannelsPage() {
       <Table
         intercomTarget={"open-channels-table"}
         cellRenderer={channelsCellRenderer}
-        rowFirstCellRenderer={channelsRowFirstCellRenderer}
         data={data}
         activeColumns={viewResponse.view.columns || []}
         isLoading={channelsResponse.isLoading || channelsResponse.isFetching || channelsResponse.isUninitialized}
