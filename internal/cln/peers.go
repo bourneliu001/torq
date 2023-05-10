@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -17,8 +18,6 @@ import (
 	"github.com/lncapital/torq/internal/settings"
 	"github.com/lncapital/torq/proto/cln"
 )
-
-const streamPeersTickerSeconds = 60
 
 type client_ListPeers interface {
 	ListPeers(ctx context.Context, in *cln.ListpeersRequest, opts ...grpc.CallOption) (*cln.ListpeersResponse, error)
@@ -72,12 +71,15 @@ func listAndProcessPeers(ctx context.Context, db *sqlx.DB, client client_ListPee
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessPeers")
+	defer span.End()
+
 	peers, err := client.ListPeers(ctx, &cln.ListpeersRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing peers for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storePeers(db, peers.Peers, nodeSettings)
+	err = storePeers(ctx, db, peers.Peers, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing peers for nodeId: %v", nodeSettings.NodeId)
 	}
@@ -89,9 +91,19 @@ func listAndProcessPeers(ctx context.Context, db *sqlx.DB, client client_ListPee
 	return nil
 }
 
-func storePeers(db *sqlx.DB, peers []*cln.ListpeersPeers, nodeSettings cache.NodeSettingsCache) error {
+func storePeers(ctx context.Context,
+	db *sqlx.DB,
+	peers []*cln.ListpeersPeers,
+	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storePeers")
+	defer span.End()
+
 	processedPeerNodeIds := make(map[int]bool)
 	for _, peer := range peers {
+		if peer == nil {
+			continue
+		}
 		peerPublicKey := hex.EncodeToString(peer.Id)
 		peerNodeId := cache.GetPeerNodeIdByPublicKey(peerPublicKey, nodeSettings.Chain, nodeSettings.Network)
 		if peerNodeId == 0 {

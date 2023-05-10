@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"context"
 	"fmt"
 	"mime/multipart"
 	"time"
@@ -54,20 +55,26 @@ func GetNodeIdByGRPC(db *sqlx.DB, grpcAddress string) (int, error) {
 	return 0, nil
 }
 
-func AddNodeToDB(db *sqlx.DB, implementation core.Implementation,
-	grpcAddress string, certificate []byte, authentication []byte, caCertificate []byte) (NodeConnectionDetails, error) {
+func AddNodeToDB(ctx context.Context,
+	db *sqlx.DB,
+	implementation core.Implementation,
+	grpcAddress string,
+	certificate []byte,
+	authentication []byte,
+	caCertificate []byte) (NodeConnectionDetails, error) {
+
 	var publicKey string
 	var chain core.Chain
 	var network core.Network
 	var err error
 	switch implementation {
 	case core.LND:
-		publicKey, chain, network, err = getInformationFromLndNode(grpcAddress, certificate, authentication)
+		publicKey, chain, network, err = getInformationFromLndNode(ctx, grpcAddress, certificate, authentication)
 		if err != nil {
 			return NodeConnectionDetails{}, errors.Wrap(err, "Getting public key from LND node")
 		}
 	case core.CLN:
-		publicKey, chain, network, err = getInformationFromClnNode(grpcAddress, certificate, authentication, caCertificate)
+		publicKey, chain, network, err = getInformationFromClnNode(ctx, grpcAddress, certificate, authentication, caCertificate)
 		if err != nil {
 			return NodeConnectionDetails{}, errors.Wrap(err, "Getting public key from CLN node")
 		}
@@ -103,7 +110,7 @@ func AddNodeToDB(db *sqlx.DB, implementation core.Implementation,
 	var nodeStartDate *time.Time
 	switch implementation {
 	case core.LND:
-		nodeStartDate, err = getNodeStartDateFromLndNode(grpcAddress, certificate, authentication)
+		nodeStartDate, err = getNodeStartDateFromLndNode(ctx, grpcAddress, certificate, authentication)
 		if err != nil {
 			return NodeConnectionDetails{}, errors.Wrap(err, "Getting node start date from lnd node")
 		}
@@ -122,12 +129,12 @@ func AddNodeToDB(db *sqlx.DB, implementation core.Implementation,
 	}
 	switch implementation {
 	case core.LND:
-		existingNodeConnectionDetails.TLSDataBytes = certificate
-		existingNodeConnectionDetails.MacaroonDataBytes = authentication
+		nodeConnectionDetailsData.TLSDataBytes = certificate
+		nodeConnectionDetailsData.MacaroonDataBytes = authentication
 	case core.CLN:
-		existingNodeConnectionDetails.CertificateDataBytes = certificate
-		existingNodeConnectionDetails.KeyDataBytes = authentication
-		existingNodeConnectionDetails.CaCertificateDataBytes = caCertificate
+		nodeConnectionDetailsData.CertificateDataBytes = certificate
+		nodeConnectionDetailsData.KeyDataBytes = authentication
+		nodeConnectionDetailsData.CaCertificateDataBytes = caCertificate
 	}
 	ncd, err := addNodeConnectionDetails(db, nodeConnectionDetailsData)
 	if err != nil {

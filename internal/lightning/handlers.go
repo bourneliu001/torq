@@ -26,7 +26,7 @@ func batchOpenHandler(c *gin.Context) {
 		return
 	}
 
-	response, err := BatchOpenChannel(batchOpnReq)
+	response, err := BatchOpenChannel(c.Request.Context(), batchOpnReq)
 	if err != nil {
 		server_errors.WrapLogAndSendServerError(c, err, "Batch open channels")
 		return
@@ -44,7 +44,7 @@ func openChannelHandler(c *gin.Context) {
 		return
 	}
 
-	response, err := OpenChannel(openChannelRequest)
+	response, err := OpenChannel(c.Request.Context(), openChannelRequest)
 	switch {
 	case err != nil && strings.Contains(err.Error(), "connecting to "):
 		serr := server_errors.ServerError{}
@@ -114,7 +114,7 @@ func closeChannelHandler(c *gin.Context, db *sqlx.DB) {
 	}
 
 	closeChannelRequest.Db = db
-	response, err := CloseChannel(closeChannelRequest)
+	response, err := CloseChannel(c.Request.Context(), closeChannelRequest)
 	if err != nil {
 		// Check if the error was because the node could not connect to the peer
 		if strings.Contains(err.Error(), "could not connect to peer.") {
@@ -139,7 +139,7 @@ func updateRoutingPolicyHandler(c *gin.Context, db *sqlx.DB) {
 	requestBody.RateLimitCount = 10
 	requestBody.Db = db
 
-	response, err := SetRoutingPolicy(requestBody)
+	response, err := SetRoutingPolicy(c.Request.Context(), requestBody)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, server_errors.SingleServerError(err.Error()))
 		err = errors.Wrap(err, "Problem when setting routing policy")
@@ -167,7 +167,7 @@ func getNodesWalletBalancesHandler(c *gin.Context) {
 		if activeTorqNode.Network != core.Network(network) {
 			continue
 		}
-		resp, err := GetWalletBalance(activeTorqNode.NodeId)
+		resp, err := GetWalletBalance(c.Request.Context(), activeTorqNode.NodeId)
 		if err != nil {
 			errorMsg := fmt.Sprintf("Error retrieving wallet balance for nodeId: %v", activeTorqNode.NodeId)
 			server_errors.WrapLogAndSendServerError(c, err, errorMsg)
@@ -188,7 +188,7 @@ func newInvoiceHandler(c *gin.Context) {
 		return
 	}
 
-	resp, err := NewInvoice(requestBody)
+	resp, err := NewInvoice(c.Request.Context(), requestBody)
 	if err != nil {
 		server_errors.WrapLogAndSendServerError(c, err, "Creating new invoice")
 		return
@@ -206,7 +206,7 @@ func decodeInvoiceHandler(c *gin.Context) {
 		return
 	}
 
-	di, err := DecodeInvoice(lightning_helpers.DecodeInvoiceRequest{
+	di, err := DecodeInvoice(c.Request.Context(), lightning_helpers.DecodeInvoiceRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: nodeId},
 		Invoice:              invoice,
 	})
@@ -235,7 +235,7 @@ func sendCoinsHandler(c *gin.Context) {
 		return
 	}
 
-	resp, err := OnChainPayment(requestBody)
+	resp, err := OnChainPayment(c.Request.Context(), requestBody)
 	if err != nil {
 		server_errors.WrapLogAndSendServerError(c, err, "Sending on-chain payment")
 		return
@@ -252,7 +252,7 @@ func newAddressHandler(c *gin.Context) {
 		return
 	}
 
-	resp, err := NewAddress(requestBody)
+	resp, err := NewAddress(c.Request.Context(), requestBody)
 	if err != nil {
 		// TODO: Improve error handling. Can't find LND errors in the codebase
 		server_errors.LogAndSendServerError(c, err)

@@ -1,11 +1,13 @@
 package move_funds
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+
 	"github.com/lncapital/torq/internal/lightning"
 	"github.com/lncapital/torq/internal/lightning_helpers"
 	"github.com/lncapital/torq/pkg/server_errors"
-	"net/http"
 )
 
 func moveFundsOffChainHandler(c *gin.Context) {
@@ -22,7 +24,7 @@ func moveFundsOffChainHandler(c *gin.Context) {
 	}
 
 	memo := "Moving funds between nodes"
-	invoiceResponse, err := lightning.NewInvoice(lightning_helpers.NewInvoiceRequest{
+	invoiceResponse, err := lightning.NewInvoice(c.Request.Context(), lightning_helpers.NewInvoiceRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.IncomingNodeId},
 		Memo:                 &memo,
 		RPreImage:            nil,
@@ -33,7 +35,7 @@ func moveFundsOffChainHandler(c *gin.Context) {
 		return
 	}
 
-	response, err := lightning.MoveFundsOffChain(lightning_helpers.MoveFundsOffChainRequest{
+	response, err := lightning.MoveFundsOffChain(c.Request.Context(), lightning_helpers.MoveFundsOffChainRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.OutgoingNodeId},
 		ChannelId:            request.ChannelId,
 		OutgoingNodeId:       request.OutgoingNodeId,
@@ -80,7 +82,7 @@ func moveOnChainFundsHandler(c *gin.Context) {
 	}
 
 	// Get the address to send to
-	address, err := lightning.NewAddress(lightning_helpers.NewAddressRequest{
+	address, err := lightning.NewAddress(c.Request.Context(), lightning_helpers.NewAddressRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.IncomingNodeId},
 		Type:                 lightning_helpers.P2WKH,
 	})
@@ -91,7 +93,7 @@ func moveOnChainFundsHandler(c *gin.Context) {
 
 	label := "Moving funds between nodes"
 	// Send the funds on chain
-	response, err := lightning.OnChainPayment(lightning_helpers.OnChainPaymentRequest{
+	response, err := lightning.OnChainPayment(c.Request.Context(), lightning_helpers.OnChainPaymentRequest{
 		CommunicationRequest: lightning_helpers.CommunicationRequest{NodeId: request.OutgoingNodeId},
 		Address:              address,
 		AmountSat:            request.AmountMsat / 1000,

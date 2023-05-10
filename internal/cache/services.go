@@ -317,6 +317,11 @@ func handleServiceOperation(
 		}
 		writeState(serviceCache, torqDesiredStateCache)
 	case writeCurrentCoreServiceState:
+		if serviceCache.ServiceType == services_helpers.RootService {
+			services_helpers.GetMetrics().SetState(serviceCache.ServiceStatus)
+		} else {
+			services_helpers.GetMetrics().SetCoreServiceState(serviceCache.ServiceType, serviceCache.ServiceStatus)
+		}
 		state := torqCurrentStateCache.CoreServiceStates[serviceCache.ServiceType]
 		if state.Status == serviceCache.ServiceStatus && serviceCache.ServiceStatus == services_helpers.Initializing {
 			torqCurrentStateCache.CoreServiceStates[serviceCache.ServiceType] = state.Initializing()
@@ -349,6 +354,8 @@ func handleServiceOperation(
 			log.Error().Msgf("No empty nodeId (%v) allowed", serviceCache.NodeId)
 			break
 		}
+		services_helpers.GetMetrics().
+			SetNodeServiceState(serviceCache.ServiceType, serviceCache.NodeId, serviceCache.ServiceStatus)
 		n := getNodeServiceStates(serviceCache, torqCurrentStateCache)
 		state := n[serviceCache.ServiceType]
 		if state.Status == serviceCache.ServiceStatus && serviceCache.ServiceStatus == services_helpers.Initializing {
@@ -391,6 +398,11 @@ func handleServiceOperation(
 		n[serviceCache.ServiceType] = state.Cancel()
 		setNodeServiceStates(serviceCache, torqCurrentStateCache, n)
 	case writeCurrentCoreServiceFailure:
+		if serviceCache.ServiceType == services_helpers.RootService {
+			services_helpers.GetMetrics().SetState(services_helpers.Inactive)
+		} else {
+			services_helpers.GetMetrics().SetCoreServiceState(serviceCache.ServiceType, services_helpers.Inactive)
+		}
 		state := torqCurrentStateCache.CoreServiceStates[serviceCache.ServiceType]
 		torqCurrentStateCache.CoreServiceStates[serviceCache.ServiceType] = state.Failure()
 	case writeCurrentNodeServiceFailure:
@@ -398,6 +410,8 @@ func handleServiceOperation(
 			log.Error().Msgf("No empty nodeId (%v) allowed", serviceCache.NodeId)
 			break
 		}
+		services_helpers.GetMetrics().
+			SetNodeServiceState(serviceCache.ServiceType, serviceCache.NodeId, services_helpers.Inactive)
 		n := getNodeServiceStates(serviceCache, torqCurrentStateCache)
 		state := n[serviceCache.ServiceType]
 		n[serviceCache.ServiceType] = state.Failure()

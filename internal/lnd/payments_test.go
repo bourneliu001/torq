@@ -57,7 +57,7 @@ func TestSubscribePayments(t *testing.T) {
 		panic(err)
 	}
 
-	db, dbCancel, err := srv.NewTestDatabase(true)
+	db, dbCancel, err := srv.NewTestDatabase()
 	defer dbCancel()
 	if err != nil {
 		t.Fatal(err)

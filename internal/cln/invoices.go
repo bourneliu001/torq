@@ -4,20 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
 	"github.com/lncapital/torq/internal/services_helpers"
 	"github.com/lncapital/torq/proto/cln"
 )
-
-const streamInvoicesTickerSeconds = 15 * 60
 
 type client_ListInvoices interface {
 	ListInvoices(ctx context.Context,
@@ -69,6 +67,9 @@ func listAndProcessInvoices(ctx context.Context,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessInvoices")
+	defer span.End()
+
 	clnInvoices, err := client.ListInvoices(ctx, &cln.ListinvoicesRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing invoices for nodeId: %v", nodeSettings.NodeId)
@@ -93,6 +94,9 @@ func storeInvoices(ctx context.Context,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "storeInvoices")
+	defer span.End()
 
 	var lastImportAt *time.Time
 	err := db.Get(&lastImportAt, `SELECT MAX(created_on) FROM invoice WHERE node_id=$1`, nodeSettings.NodeId)
@@ -139,7 +143,6 @@ func storeInvoice(ctx context.Context,
 	clnInvoice *cln.ListinvoicesInvoices,
 	nodeSettings cache.NodeSettingsCache) error {
 
-	expiresAt := time.Unix(int64(clnInvoice.ExpiresAt), 0)
 	var paidAt *time.Time
 	if clnInvoice.PaidAt != nil {
 		paidAtTime := time.Unix(int64(*clnInvoice.PaidAt), 0)
@@ -180,7 +183,7 @@ func storeInvoice(ctx context.Context,
 		if clnInvoice.Bolt12 != nil {
 			invoiceString = *clnInvoice.Bolt12
 		}
-		decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &invoiceString})
+		decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: invoiceString})
 		if err != nil {
 			return errors.Wrapf(err,
 				"decoding invoice failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
@@ -209,45 +212,24 @@ func storeInvoice(ctx context.Context,
 				destinationNodeId = &destinationNodeIdInt
 			}
 		}
-		var routeHints *string
-		if decodedInvoice.Routes != nil {
-			routeHintsArray := constructRoutes(decodedInvoice.Routes)
-			routeHintsBytes, err := json.Marshal(routeHintsArray)
-			if err != nil {
-				return errors.Wrapf(err,
-					"marshalling route hint failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
-			}
-			routeHintsString := string(routeHintsBytes)
-			routeHints = &routeHintsString
-		}
-		var features *string
-		if decodedInvoice.Features != nil {
-			featuresArray := constructFeatureMap(decodedInvoice.Features)
-			featuresBytes, err := json.Marshal(featuresArray)
-			if err != nil {
-				return errors.Wrapf(err,
-					"marshalling features failed for label: %v, nodeId: %v", clnInvoice.Label, nodeSettings.NodeId)
-			}
-			featuresString := string(featuresBytes)
-			features = &featuresString
-		}
 
-		// TODO FIXME CLN can we get HTLCs for a settled invoice?
+		// TODO FIXME CLN: can we get HTLCs for a settled invoice?
+		// TODO FIXME CLN: RoutHints, Features are missing?
 
 		_, err = db.Exec(`INSERT INTO invoice (
 				memo, label, type,
 				r_preimage, r_hash,
 				value_msat, settle_date, expiry, settle_index, amt_paid_msat, invoice_state,
-			 	creation_date, description_hash, destination_node_id, destination_pub_key, route_hints, features,
+			 	creation_date, description_hash, destination_node_id, destination_pub_key,
             	bolt11, bolt12,
 				node_id, created_on, updated_on
 			) VALUES (
-				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
 			);`,
 			clnInvoice.Description, clnInvoice.Label, decodedInvoice.ItemType,
 			hex.EncodeToString(clnInvoice.PaymentPreimage), hex.EncodeToString(clnInvoice.PaymentHash),
-			amountMsat, paidAt, expiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
-			creationDate, descriptionHash, destinationNodeId, destinationPublicKey, routeHints, features,
+			amountMsat, paidAt, clnInvoice.ExpiresAt, clnInvoice.PayIndex, amountPaidMsat, invoiceState,
+			creationDate, descriptionHash, destinationNodeId, destinationPublicKey,
 			clnInvoice.Bolt11, clnInvoice.Bolt12,
 			nodeSettings.NodeId, time.Now(), time.Now())
 		if err != nil {

@@ -536,7 +536,7 @@ linkedInputLoop:
 				return core.Inactive, errors.Wrapf(err, "Processing Routing Policy Configurator with ChannelIds: %v for WorkflowVersionNodeId: %v", linkedChannelIds, workflowNode.WorkflowVersionNodeId)
 			}
 
-			err = processRoutingPolicyRun(db, routingPolicySettings, workflowNode, reference, workflowTriggerNode.Type)
+			err = processRoutingPolicyRun(ctx, db, routingPolicySettings, workflowNode, reference, workflowTriggerNode.Type)
 			if err != nil {
 				return core.Inactive, errors.Wrapf(err, "Processing Routing Policy Configurator with ChannelIds: %v for WorkflowVersionNodeId: %v", linkedChannelIds, workflowNode.WorkflowVersionNodeId)
 			}
@@ -575,7 +575,7 @@ linkedInputLoop:
 			}
 
 			if routingPolicySettings.ChannelId != 0 {
-				err = processRoutingPolicyRun(db, routingPolicySettings, workflowNode, reference, workflowTriggerNode.Type)
+				err = processRoutingPolicyRun(ctx, db, routingPolicySettings, workflowNode, reference, workflowTriggerNode.Type)
 				if err != nil {
 					return core.Inactive, errors.Wrapf(err, "Processing Routing Policy Configurator for WorkflowVersionNodeId: %v", workflowNode.WorkflowVersionNodeId)
 				}
@@ -729,7 +729,7 @@ linkedInputLoop:
 		}
 
 		var responses []lightning_helpers.RebalanceResponse
-		responses, err = processRebalanceRun(db, eventChannelIds, rebalanceConfigurations, workflowNode, reference)
+		responses, err = processRebalanceRun(ctx, db, eventChannelIds, rebalanceConfigurations, workflowNode, reference)
 		if err != nil {
 			return core.Inactive, errors.Wrapf(err, "Processing Rebalance for WorkflowVersionNodeId: %v", workflowNode.WorkflowVersionNodeId)
 		}
@@ -788,7 +788,7 @@ linkedInputLoop:
 			return core.Inactive, errors.Wrapf(err, "Obtaining eventChannelIds for WorkflowVersionNodeId: %v", workflowNode.WorkflowVersionNodeId)
 		}
 
-		responses, err := processRebalanceRun(db, eventChannelIds, rebalanceConfigurations, workflowNode, reference)
+		responses, err := processRebalanceRun(ctx, db, eventChannelIds, rebalanceConfigurations, workflowNode, reference)
 		if err != nil {
 			return core.Inactive, errors.Wrapf(err, "Processing Rebalance for WorkflowVersionNodeId: %v", workflowNode.WorkflowVersionNodeId)
 		}
@@ -1018,7 +1018,7 @@ func processRebalanceConfigurator(
 	return rebalanceInputConfiguration, nil
 }
 
-func processRebalanceRun(
+func processRebalanceRun(ctx context.Context,
 	db *sqlx.DB,
 	eventChannelIds []int,
 	rebalanceSettings []RebalanceConfiguration,
@@ -1134,7 +1134,7 @@ func processRebalanceRun(
 				activeChannelIds = append(activeChannelIds, req.OutgoingChannelId)
 			}
 		}
-		resp := RebalanceRequests(context.Background(), db, reqs, nodeId)
+		resp := RebalanceRequests(ctx, db, reqs, nodeId)
 		responses = append(responses, resp...)
 	}
 	if len(eventChannelIds) == 0 {
@@ -1189,7 +1189,8 @@ func processRoutingPolicyConfigurator(
 	return channelPolicyInputConfiguration, nil
 }
 
-func processRoutingPolicyRun(db *sqlx.DB,
+func processRoutingPolicyRun(ctx context.Context,
+	db *sqlx.DB,
 	routingPolicySettings ChannelPolicyConfiguration,
 	workflowNode WorkflowNode,
 	reference string,
@@ -1227,7 +1228,7 @@ func processRoutingPolicyRun(db *sqlx.DB,
 		TimeLockDelta:    routingPolicySettings.TimeLockDelta,
 	}
 
-	_, err := lightning.SetRoutingPolicy(request)
+	_, err := lightning.SetRoutingPolicy(ctx, request)
 	if err != nil {
 		log.Error().Err(err).Msgf("Workflow Trigger Fired for WorkflowVersionNodeId: %v", workflowNode.WorkflowVersionNodeId)
 	}

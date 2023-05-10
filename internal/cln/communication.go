@@ -13,6 +13,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -89,10 +90,12 @@ type lightningService struct {
 	limit chan struct{}
 }
 
-func Information(
+func Information(ctx context.Context,
 	request lightning_helpers.InformationRequest) lightning_helpers.InformationResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "Information")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.InformationResponse); ok {
 		return res
@@ -100,10 +103,12 @@ func Information(
 	return lightning_helpers.InformationResponse{}
 }
 
-func SignMessage(
+func SignMessage(ctx context.Context,
 	request lightning_helpers.SignMessageRequest) lightning_helpers.SignMessageResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "SignMessage")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.SignMessageResponse); ok {
 		return res
@@ -111,10 +116,12 @@ func SignMessage(
 	return lightning_helpers.SignMessageResponse{}
 }
 
-func SignatureVerification(
+func SignatureVerification(ctx context.Context,
 	request lightning_helpers.SignatureVerificationRequest) lightning_helpers.SignatureVerificationResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "SignatureVerification")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.SignatureVerificationResponse); ok {
 		return res
@@ -122,10 +129,12 @@ func SignatureVerification(
 	return lightning_helpers.SignatureVerificationResponse{}
 }
 
-func RoutingPolicyUpdate(
+func RoutingPolicyUpdate(ctx context.Context,
 	request lightning_helpers.RoutingPolicyUpdateRequest) lightning_helpers.RoutingPolicyUpdateResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "RoutingPolicyUpdate")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.RoutingPolicyUpdateResponse); ok {
 		return res
@@ -133,10 +142,12 @@ func RoutingPolicyUpdate(
 	return lightning_helpers.RoutingPolicyUpdateResponse{}
 }
 
-func ConnectPeer(
+func ConnectPeer(ctx context.Context,
 	request lightning_helpers.ConnectPeerRequest) lightning_helpers.ConnectPeerResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "ConnectPeer")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 60, request, responseChan)
+	processConcurrent(ctx, 60, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.ConnectPeerResponse); ok {
 		return res
@@ -144,10 +155,12 @@ func ConnectPeer(
 	return lightning_helpers.ConnectPeerResponse{}
 }
 
-func DisconnectPeer(
+func DisconnectPeer(ctx context.Context,
 	request lightning_helpers.DisconnectPeerRequest) lightning_helpers.DisconnectPeerResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "DisconnectPeer")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 60, request, responseChan)
+	processConcurrent(ctx, 60, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.DisconnectPeerResponse); ok {
 		return res
@@ -155,9 +168,12 @@ func DisconnectPeer(
 	return lightning_helpers.DisconnectPeerResponse{}
 }
 
-func WalletBalance(request lightning_helpers.WalletBalanceRequest) lightning_helpers.WalletBalanceResponse {
+func WalletBalance(ctx context.Context,
+	request lightning_helpers.WalletBalanceRequest) lightning_helpers.WalletBalanceResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "WalletBalance")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.WalletBalanceResponse); ok {
 		return res
@@ -165,9 +181,12 @@ func WalletBalance(request lightning_helpers.WalletBalanceRequest) lightning_hel
 	return lightning_helpers.WalletBalanceResponse{}
 }
 
-func ListPeers(request lightning_helpers.ListPeersRequest) lightning_helpers.ListPeersResponse {
+func ListPeers(ctx context.Context,
+	request lightning_helpers.ListPeersRequest) lightning_helpers.ListPeersResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "ListPeers")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 60, request, responseChan)
+	processConcurrent(ctx, 60, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.ListPeersResponse); ok {
 		return res
@@ -175,9 +194,12 @@ func ListPeers(request lightning_helpers.ListPeersRequest) lightning_helpers.Lis
 	return lightning_helpers.ListPeersResponse{}
 }
 
-func NewAddress(request lightning_helpers.NewAddressRequest) lightning_helpers.NewAddressResponse {
+func NewAddress(ctx context.Context,
+	request lightning_helpers.NewAddressRequest) lightning_helpers.NewAddressResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "NewAddress")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.NewAddressResponse); ok {
 		return res
@@ -185,9 +207,12 @@ func NewAddress(request lightning_helpers.NewAddressRequest) lightning_helpers.N
 	return lightning_helpers.NewAddressResponse{}
 }
 
-func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+func MoveFundsOffChain(ctx context.Context,
+	request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "MoveFundsOffChain")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 2, request, responseChan)
+	processConcurrent(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.MoveFundsOffChainResponse); ok {
 		return res
@@ -195,9 +220,12 @@ func MoveFundsOffChain(request lightning_helpers.MoveFundsOffChainRequest) light
 	return lightning_helpers.MoveFundsOffChainResponse{}
 }
 
-func OpenChannel(request lightning_helpers.OpenChannelRequest) lightning_helpers.OpenChannelResponse {
+func OpenChannel(ctx context.Context,
+	request lightning_helpers.OpenChannelRequest) lightning_helpers.OpenChannelResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "OpenChannel")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 300, request, responseChan)
+	processConcurrent(ctx, 300, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.OpenChannelResponse); ok {
 		return res
@@ -205,9 +233,12 @@ func OpenChannel(request lightning_helpers.OpenChannelRequest) lightning_helpers
 	return lightning_helpers.OpenChannelResponse{}
 }
 
-func CloseChannel(request lightning_helpers.CloseChannelRequest) lightning_helpers.CloseChannelResponse {
+func CloseChannel(ctx context.Context,
+	request lightning_helpers.CloseChannelRequest) lightning_helpers.CloseChannelResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "CloseChannel")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 300, request, responseChan)
+	processConcurrent(ctx, 300, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.CloseChannelResponse); ok {
 		return res
@@ -215,9 +246,12 @@ func CloseChannel(request lightning_helpers.CloseChannelRequest) lightning_helpe
 	return lightning_helpers.CloseChannelResponse{}
 }
 
-func NewInvoice(request lightning_helpers.NewInvoiceRequest) lightning_helpers.NewInvoiceResponse {
+func NewInvoice(ctx context.Context,
+	request lightning_helpers.NewInvoiceRequest) lightning_helpers.NewInvoiceResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "NewInvoice")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.NewInvoiceResponse); ok {
 		return res
@@ -225,9 +259,12 @@ func NewInvoice(request lightning_helpers.NewInvoiceRequest) lightning_helpers.N
 	return lightning_helpers.NewInvoiceResponse{}
 }
 
-func OnChainPayment(request lightning_helpers.OnChainPaymentRequest) lightning_helpers.OnChainPaymentResponse {
+func OnChainPayment(ctx context.Context,
+	request lightning_helpers.OnChainPaymentRequest) lightning_helpers.OnChainPaymentResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "OnChainPayment")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.OnChainPaymentResponse); ok {
 		return res
@@ -235,9 +272,12 @@ func OnChainPayment(request lightning_helpers.OnChainPaymentRequest) lightning_h
 	return lightning_helpers.OnChainPaymentResponse{}
 }
 
-func NewPayment(request lightning_helpers.NewPaymentRequest) lightning_helpers.NewPaymentResponse {
+func NewPayment(ctx context.Context,
+	request lightning_helpers.NewPaymentRequest) lightning_helpers.NewPaymentResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "NewPayment")
+	defer span.End()
 	responseChan := make(chan any)
-	processConcurrent(context.Background(), 120, request, responseChan)
+	processConcurrent(ctx, 120, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.NewPaymentResponse); ok {
 		return res
@@ -245,9 +285,12 @@ func NewPayment(request lightning_helpers.NewPaymentRequest) lightning_helpers.N
 	return lightning_helpers.NewPaymentResponse{}
 }
 
-func DecodeInvoice(request lightning_helpers.DecodeInvoiceRequest) lightning_helpers.DecodeInvoiceResponse {
+func DecodeInvoice(ctx context.Context,
+	request lightning_helpers.DecodeInvoiceRequest) lightning_helpers.DecodeInvoiceResponse {
+	ctx, span := otel.Tracer(name).Start(ctx, "DecodeInvoice")
+	defer span.End()
 	responseChan := make(chan any)
-	processSequential(context.Background(), 2, request, responseChan)
+	processSequential(ctx, 2, request, responseChan)
 	response := <-responseChan
 	if res, ok := response.(lightning_helpers.DecodeInvoiceResponse); ok {
 		return res
@@ -421,6 +464,12 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 					CommunicationResponse: communicationResponse,
 				}
 				return
+			case lightning_helpers.MoveFundsOffChainRequest:
+				responseChan <- lightning_helpers.MoveFundsOffChainResponse{
+					Request:               r,
+					CommunicationResponse: communicationResponse,
+				}
+				return
 			}
 			responseChan <- nil
 			return
@@ -482,6 +531,10 @@ func processRequestByType(ctx context.Context, req any, responseChan chan<- any)
 }
 
 func processMoveFundsOffChain(ctx context.Context, request lightning_helpers.MoveFundsOffChainRequest) lightning_helpers.MoveFundsOffChainResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processMoveFundsOffChain")
+	defer span.End()
+
 	response := lightning_helpers.MoveFundsOffChainResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -544,6 +597,9 @@ func processMoveFundsOffChain(ctx context.Context, request lightning_helpers.Mov
 func processGetInfoRequest(ctx context.Context,
 	request lightning_helpers.InformationRequest) lightning_helpers.InformationResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processGetInfoRequest")
+	defer span.End()
+
 	response := lightning_helpers.InformationResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -586,6 +642,9 @@ func processGetInfoRequest(ctx context.Context,
 func processSignMessageRequest(ctx context.Context,
 	request lightning_helpers.SignMessageRequest) lightning_helpers.SignMessageResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processSignMessageRequest")
+	defer span.End()
+
 	response := lightning_helpers.SignMessageResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -616,6 +675,9 @@ func processSignMessageRequest(ctx context.Context,
 
 func processSignatureVerificationRequest(ctx context.Context,
 	request lightning_helpers.SignatureVerificationRequest) lightning_helpers.SignatureVerificationResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processSignatureVerificationRequest")
+	defer span.End()
 
 	response := lightning_helpers.SignatureVerificationResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -653,6 +715,9 @@ func processSignatureVerificationRequest(ctx context.Context,
 
 func processRoutingPolicyUpdateRequest(ctx context.Context,
 	request lightning_helpers.RoutingPolicyUpdateRequest) lightning_helpers.RoutingPolicyUpdateResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processRoutingPolicyUpdateRequest")
+	defer span.End()
 
 	response := validateRoutingPolicyUpdateRequest(request)
 	if response != nil {
@@ -923,6 +988,9 @@ func routingPolicyUpdateRequestIsRepeated(
 func processConnectPeerRequest(ctx context.Context,
 	request lightning_helpers.ConnectPeerRequest) lightning_helpers.ConnectPeerResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processConnectPeerRequest")
+	defer span.End()
+
 	response := lightning_helpers.ConnectPeerResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -971,6 +1039,9 @@ func processConnectPeerRequest(ctx context.Context,
 func processDisconnectPeerRequest(ctx context.Context,
 	request lightning_helpers.DisconnectPeerRequest) lightning_helpers.DisconnectPeerResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processDisconnectPeerRequest")
+	defer span.End()
+
 	response := lightning_helpers.DisconnectPeerResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1012,6 +1083,9 @@ func processDisconnectPeerRequest(ctx context.Context,
 
 func processWalletBalanceRequest(ctx context.Context,
 	request lightning_helpers.WalletBalanceRequest) lightning_helpers.WalletBalanceResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processWalletBalanceRequest")
+	defer span.End()
 
 	response := lightning_helpers.WalletBalanceResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -1063,6 +1137,9 @@ func processWalletBalanceRequest(ctx context.Context,
 func processListPeersRequest(ctx context.Context,
 	request lightning_helpers.ListPeersRequest) lightning_helpers.ListPeersResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processListPeersRequest")
+	defer span.End()
+
 	response := lightning_helpers.ListPeersResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1100,6 +1177,9 @@ func processListPeersRequest(ctx context.Context,
 func processNewAddressRequest(ctx context.Context,
 	request lightning_helpers.NewAddressRequest) lightning_helpers.NewAddressResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processNewAddressRequest")
+	defer span.End()
+
 	response := lightning_helpers.NewAddressResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1136,6 +1216,9 @@ func processNewAddressRequest(ctx context.Context,
 
 func processOpenChannelRequest(ctx context.Context,
 	request lightning_helpers.OpenChannelRequest) lightning_helpers.OpenChannelResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processOpenChannelRequest")
+	defer span.End()
 
 	response := lightning_helpers.OpenChannelResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -1239,6 +1322,9 @@ func prepareOpenRequest(request lightning_helpers.OpenChannelRequest) (*cln.Fund
 func processCloseChannelRequest(ctx context.Context,
 	request lightning_helpers.CloseChannelRequest) lightning_helpers.CloseChannelResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processCloseChannelRequest")
+	defer span.End()
+
 	response := lightning_helpers.CloseChannelResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1300,6 +1386,9 @@ func prepareCloseRequest(request lightning_helpers.CloseChannelRequest) (*cln.Cl
 func processNewInvoiceRequest(ctx context.Context,
 	request lightning_helpers.NewInvoiceRequest) lightning_helpers.NewInvoiceResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processNewInvoiceRequest")
+	defer span.End()
+
 	response := lightning_helpers.NewInvoiceResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1356,10 +1445,6 @@ func prepareInvoiceRequest(request lightning_helpers.NewInvoiceRequest) (*cln.In
 		amountMsat := uint64(*request.ValueMsat)
 		req.AmountMsat = &cln.AmountOrAny{Value: &cln.AmountOrAny_Amount{Amount: &cln.Amount{Msat: amountMsat}}}
 	}
-	// TODO FIXME CLN is this even accurate?
-	if request.Private != nil {
-		req.Exposeprivatechannels = request.Private
-	}
 	// TODO FIXME CLN Better labeling?
 	req.Label = time.Now().UTC().Format("20060102.150405.000000")
 	// TODO FIXME CLN AMP?
@@ -1368,6 +1453,9 @@ func prepareInvoiceRequest(request lightning_helpers.NewInvoiceRequest) (*cln.In
 
 func processOnChainPaymentRequest(ctx context.Context,
 	request lightning_helpers.OnChainPaymentRequest) lightning_helpers.OnChainPaymentResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processOnChainPaymentRequest")
+	defer span.End()
 
 	response := lightning_helpers.OnChainPaymentResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -1414,6 +1502,9 @@ func processOnChainPaymentRequest(ctx context.Context,
 
 func processNewPaymentRequest(ctx context.Context,
 	request lightning_helpers.NewPaymentRequest) lightning_helpers.NewPaymentResponse {
+
+	ctx, span := otel.Tracer(name).Start(ctx, "processNewPaymentRequest")
+	defer span.End()
 
 	response := lightning_helpers.NewPaymentResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
@@ -1472,6 +1563,9 @@ func processNewPaymentRequest(ctx context.Context,
 func processDecodeInvoiceRequest(ctx context.Context,
 	request lightning_helpers.DecodeInvoiceRequest) lightning_helpers.DecodeInvoiceResponse {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "processDecodeInvoiceRequest")
+	defer span.End()
+
 	response := lightning_helpers.DecodeInvoiceResponse{
 		CommunicationResponse: lightning_helpers.CommunicationResponse{
 			Status: lightning_helpers.Inactive,
@@ -1487,7 +1581,7 @@ func processDecodeInvoiceRequest(ctx context.Context,
 	}
 
 	client := cln.NewNodeClient(connection)
-	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: &request.Invoice})
+	decodedInvoice, err := client.Decode(ctx, &cln.DecodeRequest{String_: request.Invoice})
 	// TODO: Handle different error types like incorrect checksum etc to explain why the decode failed.
 	if err != nil {
 		response.Error = err.Error()
@@ -1517,7 +1611,7 @@ func processDecodeInvoiceRequest(ctx context.Context,
 
 func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	response lightning_helpers.DecodeInvoiceResponse) lightning_helpers.DecodeInvoiceResponse {
-	if decodedInvoice == nil || decodedInvoice.Valid == nil || !*decodedInvoice.Valid {
+	if decodedInvoice == nil || !decodedInvoice.Valid {
 		return response
 	}
 	response.Status = lightning_helpers.Active
@@ -1525,16 +1619,13 @@ func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	nodeSettings := cache.GetNodeSettingsByNodeId(response.Request.NodeId)
 	response.NodeAlias = cache.GetNodeAlias(cache.GetPeerNodeIdByPublicKey(response.DestinationPubKey, nodeSettings.Chain, nodeSettings.Network))
 	response.RHash = hex.EncodeToString(decodedInvoice.PaymentHash)
-	if decodedInvoice.Description != nil {
-		response.Memo = *decodedInvoice.Description
+	if decodedInvoice.InvoiceAmountMsat != nil {
+		response.ValueMsat = int64((*decodedInvoice.InvoiceAmountMsat).Msat)
 	}
-	if decodedInvoice.AmountMsat != nil {
-		response.ValueMsat = int64((*decodedInvoice.AmountMsat).Msat)
-	}
-	if decodedInvoice.Fallbacks != nil {
-		for _, fb := range decodedInvoice.Fallbacks {
+	if decodedInvoice.InvoiceFallbacks != nil {
+		for _, fb := range decodedInvoice.InvoiceFallbacks {
 			if response.FallbackAddr == "" {
-				response.FallbackAddr = fb.GetAddr()
+				response.FallbackAddr = fb.GetAddress()
 			}
 		}
 	}
@@ -1550,38 +1641,38 @@ func constructDecodedInvoice(decodedInvoice *cln.DecodeResponse,
 	if decodedInvoice.MinFinalCltvExpiry != nil {
 		response.CltvExpiry = int64(*decodedInvoice.MinFinalCltvExpiry)
 	}
-	response.RouteHints = constructRoutes(decodedInvoice.Routes)
-	response.Features = constructFeatureMap(decodedInvoice.Features)
+	//response.RouteHints = constructRoutes(decodedInvoice.Routes)
+	response.Features = constructFeatureMap(decodedInvoice.InvoiceFeatures)
 	return response
 }
 
-func constructRoutes(routes *cln.Routes) []lightning_helpers.RouteHint {
-	var r []lightning_helpers.RouteHint
-
-	if routes != nil {
-		for _, rh := range routes.Routes {
-			var hopHints []lightning_helpers.HopHint
-			for _, hh := range rh.Hops {
-				feeBaseMsat := uint32(0)
-				if hh.FeeBaseMsat != nil {
-					feeBaseMsat = uint32((*hh.FeeBaseMsat).Msat)
-				}
-				hopHints = append(hopHints, lightning_helpers.HopHint{
-					ShortChannelId:         hh.ShortChannelId,
-					ChannelSourcePublicKey: hex.EncodeToString(hh.Pubkey),
-					FeeBaseMsat:            feeBaseMsat,
-					CltvExpiryDelta:        hh.CltvExpiryDelta,
-					FeeProportional:        hh.FeeProportionalMillionths,
-				})
-			}
-			r = append(r, lightning_helpers.RouteHint{
-				HopHints: hopHints,
-			})
-		}
-	}
-
-	return r
-}
+//func constructRoutes(routes *cln.Routes) []lightning_helpers.RouteHint {
+//	var r []lightning_helpers.RouteHint
+//
+//	if routes != nil {
+//		for _, rh := range routes.Routes {
+//			var hopHints []lightning_helpers.HopHint
+//			for _, hh := range rh.Hops {
+//				feeBaseMsat := uint32(0)
+//				if hh.FeeBaseMsat != nil {
+//					feeBaseMsat = uint32((*hh.FeeBaseMsat).Msat)
+//				}
+//				hopHints = append(hopHints, lightning_helpers.HopHint{
+//					ShortChannelId:         hh.ShortChannelId,
+//					ChannelSourcePublicKey: hex.EncodeToString(hh.Pubkey),
+//					FeeBaseMsat:            feeBaseMsat,
+//					CltvExpiryDelta:        hh.CltvExpiryDelta,
+//					FeeProportional:        hh.FeeProportionalMillionths,
+//				})
+//			}
+//			r = append(r, lightning_helpers.RouteHint{
+//				HopHints: hopHints,
+//			})
+//		}
+//	}
+//
+//	return r
+//}
 
 func constructFeatureMap(features []byte) lightning_helpers.FeatureMap {
 	f := lightning_helpers.FeatureMap{}

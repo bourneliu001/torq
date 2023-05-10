@@ -9,6 +9,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -20,7 +22,7 @@ import (
 	"github.com/lncapital/torq/proto/cln"
 )
 
-const streamChannelsTickerSeconds = 10
+const name = "cln"
 
 type client_ListChannels interface {
 	ListPeerChannels(ctx context.Context,
@@ -65,21 +67,26 @@ func SubscribeAndStoreChannels(ctx context.Context,
 	}
 }
 
-func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_ListChannels,
+func listAndProcessChannels(ctx context.Context,
+	db *sqlx.DB,
+	client client_ListChannels,
 	serviceType services_helpers.ServiceType,
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessPeerChannels")
 	clnPeerChannels, err := client.ListPeerChannels(ctx, &cln.ListpeerchannelsRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing peer channels for nodeId: %v", nodeSettings.NodeId)
 	}
-
-	err = storePeerChannels(db, clnPeerChannels.Channels, nodeSettings)
+	err = storePeerChannels(ctx, db, clnPeerChannels.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
+	span.End()
 
+	ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessChannels")
+	span.SetAttributes(attribute.String("Source", nodeSettings.PublicKey))
 	publicKey, err := hex.DecodeString(nodeSettings.PublicKey)
 	if err != nil {
 		return errors.Wrapf(err, "decoding public key for nodeId: %v", nodeSettings.NodeId)
@@ -90,23 +97,25 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 	if err != nil {
 		return errors.Wrapf(err, "listing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
-
-	err = storeChannels(db, clnChannels.Channels, nodeSettings)
+	err = storeChannels(ctx, db, clnChannels.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
+	span.End()
 
+	ctx, span = otel.Tracer(name).Start(ctx, "listAndProcessChannels")
+	span.SetAttributes(attribute.String("Destination", nodeSettings.PublicKey))
 	clnChannels, err = client.ListChannels(ctx, &cln.ListchannelsRequest{
 		Destination: publicKey,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "listing destination channels for nodeId: %v", nodeSettings.NodeId)
 	}
-
-	err = storeChannels(db, clnChannels.Channels, nodeSettings)
+	err = storeChannels(ctx, db, clnChannels.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing destination channels for nodeId: %v", nodeSettings.NodeId)
 	}
+	span.End()
 
 	if bootStrapping {
 		log.Info().Msgf("Initial import of peers is done for nodeId: %v", nodeSettings.NodeId)
@@ -115,9 +124,13 @@ func listAndProcessChannels(ctx context.Context, db *sqlx.DB, client client_List
 	return nil
 }
 
-func storePeerChannels(db *sqlx.DB,
+func storePeerChannels(ctx context.Context,
+	db *sqlx.DB,
 	clnPeerChannels []*cln.ListpeerchannelsChannels,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storePeerChannels")
+	defer span.End()
 
 	for _, clnPeerChannel := range clnPeerChannels {
 		if clnPeerChannel != nil {
@@ -143,9 +156,13 @@ func storePeerChannels(db *sqlx.DB,
 	return nil
 }
 
-func storeChannels(db *sqlx.DB,
+func storeChannels(ctx context.Context,
+	db *sqlx.DB,
 	clnChannels []*cln.ListchannelsChannels,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeChannels")
+	defer span.End()
 
 	for _, clnChannel := range clnChannels {
 		if clnChannel != nil {
@@ -266,18 +283,18 @@ func processPeerChannel(db *sqlx.DB,
 	}
 	if clnPeerChannel.Closer != nil {
 		switch *clnPeerChannel.Closer {
-		case cln.ChannelSide_IN:
+		case cln.ChannelSide_REMOTE:
 			channel.ClosingNodeId = &peerNodeId
-		case cln.ChannelSide_OUT:
+		case cln.ChannelSide_LOCAL:
 			channel.ClosingNodeId = &nodeSettings.NodeId
 		}
 	}
 	if clnPeerChannel.Opener != nil {
 		switch *clnPeerChannel.Opener {
-		case cln.ChannelSide_IN:
+		case cln.ChannelSide_REMOTE:
 			channel.InitiatingNodeId = &peerNodeId
 			channel.AcceptingNodeId = &nodeSettings.NodeId
-		case cln.ChannelSide_OUT:
+		case cln.ChannelSide_LOCAL:
 			channel.InitiatingNodeId = &nodeSettings.NodeId
 			channel.AcceptingNodeId = &peerNodeId
 		}
@@ -326,13 +343,13 @@ func processPeerChannel(db *sqlx.DB,
 			channelId, nodeSettings.NodeId)
 		return channelId, nil
 	}
-	if clnPeerChannel.ChannelType != nil {
-		for _, ctn := range (*clnPeerChannel.ChannelType).Names {
-			if channelState.CommitmentType == core.CommitmentTypeUnknown {
-				channelState.CommitmentType = core.GetCommitmentTypeForCln(ctn)
-			}
-		}
-	}
+	//if clnPeerChannel.ChannelType != nil {
+	//	for _, ctn := range (*clnPeerChannel.ChannelType).Names {
+	//		if channelState.CommitmentType == core.CommitmentTypeUnknown {
+	//			channelState.CommitmentType = core.GetCommitmentTypeForCln(ctn)
+	//		}
+	//	}
+	//}
 	var htlcs []cache.Htlc
 	pendingIncomingHtlcCount := 0
 	pendingIncomingHtlcAmount := int64(0)

@@ -13,10 +13,17 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 	"github.com/urfave/cli/v2/altsrc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/build"
@@ -37,6 +44,7 @@ import (
 	"github.com/lncapital/torq/internal/workflows"
 	"github.com/lncapital/torq/pkg/cln_connect"
 	"github.com/lncapital/torq/pkg/lnd_connect"
+	prometheus2 "github.com/lncapital/torq/pkg/prometheus"
 )
 
 var debuglevels = map[string]zerolog.Level{ //nolint:gochecknoglobals
@@ -75,6 +83,10 @@ func main() {
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "torq.pprof.path",
 			Usage: "Set pprof path",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "torq.prometheus.path",
+			Usage: "Set prometheus path",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "torq.vector.url",
@@ -173,6 +185,25 @@ func main() {
 			Name:  "cln.ca-certificate-path",
 			Usage: "Path on disk to CLN ca certificate file",
 		}),
+
+		// OTEL details
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.type",
+			Usage: "Type of OpenTelemetry exporter stdout/file/jaeger",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.endpoint",
+			Usage: "endpoint for jaeger",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "otel.exporter.path",
+			Usage: "path for the exporter",
+		}),
+		altsrc.NewFloat64Flag(&cli.Float64Flag{
+			Name:  "otel.sampler.fraction",
+			Value: 0.10,
+			Usage: "Sampler ratio default: 0.10 or 10%",
+		}),
 	}
 
 	start := &cli.Command{
@@ -186,6 +217,52 @@ func main() {
 				log.Debug().Msgf("DebugLevel: %v enabled", debuglevel)
 			}
 
+			var exporter tracesdk.SpanExporter
+			var tp *tracesdk.TracerProvider
+			switch strings.ToLower(c.String("otel.exporter.type")) {
+			case "stdout":
+				// Set up OTLP tracing (stdout for debug).
+				exporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
+			case "jaeger":
+				exporter, err = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(c.String("otel.exporter.endpoint"))))
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
+			case "file":
+				var f *os.File
+				f, err = os.Create(c.String("otel.exporter.path"))
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				defer func(f *os.File) {
+					err = f.Close()
+					if err != nil {
+						log.Error().Err(err).Msgf("OpenTelemetry close file error: %v", err)
+					}
+				}(f)
+				exporter, err = stdouttrace.New(stdouttrace.WithWriter(f), stdouttrace.WithPrettyPrint())
+				if err != nil {
+					log.Error().Err(err).Msgf("OpenTelemetry error: %v", err)
+					os.Exit(1)
+				}
+				tp = setupTracerProvider(c.Float64("otel.sampler.fraction"), exporter)
+				defer func() { _ = exporter.Shutdown(context.Background()) }()
+			}
+
+			registry := prometheus.NewRegistry()
+			services_helpers.SetMetrics(services_helpers.NewMetrics(registry))
+			prometheus2.SetRegistry(registry)
+
 			// Print startup message
 			fmt.Printf("Starting Torq %s\n", build.ExtendedVersion())
 
@@ -193,7 +270,7 @@ func main() {
 			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
 				c.String("db.password"), c.String("db.host"), c.String("db.port"))
 			if err != nil {
-				return errors.Wrap(err, "start cmd")
+				return errors.Wrap(err, "Database connect")
 			}
 
 			defer func() {
@@ -241,9 +318,9 @@ func main() {
 				go pprofStartup(c)
 			}
 
-			if err = torqsrv.Start(c.String("torq.network-interface"), c.Int("torq.port"), c.String("torq.password"),
+			if err = torqsrv.Start(tp, c.String("torq.network-interface"), c.Int("torq.port"), c.String("torq.password"),
 				c.String("torq.cookie-path"),
-				db, c.Bool("torq.auto-login")); err != nil {
+				db, c.Bool("torq.auto-login"), c.String("torq.prometheus.path")); err != nil {
 				return errors.Wrap(err, "Starting torq webserver")
 			}
 
@@ -290,6 +367,19 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+}
+
+func setupTracerProvider(fraction float64, exporter tracesdk.SpanExporter) *tracesdk.TracerProvider {
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(fraction))),
+		tracesdk.WithBatcher(exporter),
+		tracesdk.WithResource(resource.NewWithAttributes(
+			build.ExtendedVersion(),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	return tp
 }
 
 func pprofStartup(c *cli.Context) {
@@ -359,7 +449,7 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 					"Node specified in config is not in DB, obtaining public key from GRPC: %v", grpcAddress)
 				var nodeConnectionDetails settings.NodeConnectionDetails
 				for {
-					nodeConnectionDetails, err = settings.AddNodeToDB(db, core.LND, grpcAddress, tlsFile, macaroonFile, nil)
+					nodeConnectionDetails, err = settings.AddNodeToDB(context.Background(), db, core.LND, grpcAddress, tlsFile, macaroonFile, nil)
 					if err == nil && nodeConnectionDetails.NodeId != 0 {
 						break
 					} else {
@@ -426,7 +516,7 @@ func migrateAndProcessArguments(db *sqlx.DB, c *cli.Context) {
 					"Node specified in config is not in DB, obtaining public key from GRPC: %v", grpcAddress)
 				var nodeConnectionDetails settings.NodeConnectionDetails
 				for {
-					nodeConnectionDetails, err = settings.AddNodeToDB(db, core.CLN, grpcAddress, certificate, key, caCertificate)
+					nodeConnectionDetails, err = settings.AddNodeToDB(context.Background(), db, core.CLN, grpcAddress, certificate, key, caCertificate)
 					if err == nil && nodeConnectionDetails.NodeId != 0 {
 						break
 					} else {
@@ -773,8 +863,7 @@ func bootService(db *sqlx.DB, serviceType services_helpers.ServiceType, nodeId i
 		switch *implementation {
 		case core.LND:
 			nodeConnectionDetails := cache.GetNodeConnectionDetails(nodeId)
-			conn, err = lnd_connect.Connect(
-				nodeConnectionDetails.GRPCAddress,
+			conn, err = lnd_connect.Connect(nodeConnectionDetails.GRPCAddress,
 				nodeConnectionDetails.TLSFileBytes,
 				nodeConnectionDetails.MacaroonFileBytes)
 			if err != nil {
@@ -784,8 +873,7 @@ func bootService(db *sqlx.DB, serviceType services_helpers.ServiceType, nodeId i
 			}
 		case core.CLN:
 			nodeConnectionDetails := cache.GetNodeConnectionDetails(nodeId)
-			conn, err = cln_connect.Connect(
-				nodeConnectionDetails.GRPCAddress,
+			conn, err = cln_connect.Connect(nodeConnectionDetails.GRPCAddress,
 				nodeConnectionDetails.CertificateFileBytes,
 				nodeConnectionDetails.KeyFileBytes,
 				nodeConnectionDetails.CaCertificateFileBytes)

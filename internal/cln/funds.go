@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	"github.com/lncapital/torq/internal/cache"
@@ -15,8 +16,6 @@ import (
 	"github.com/lncapital/torq/internal/services_helpers"
 	"github.com/lncapital/torq/proto/cln"
 )
-
-const streamFundsTickerSeconds = 10
 
 type client_ListFunds interface {
 	ListFunds(ctx context.Context,
@@ -63,12 +62,15 @@ func listAndProcessFunds(ctx context.Context, db *sqlx.DB, client client_ListFun
 	nodeSettings cache.NodeSettingsCache,
 	bootStrapping bool) error {
 
+	ctx, span := otel.Tracer(name).Start(ctx, "listAndProcessFunds")
+	defer span.End()
+
 	clnFunds, err := client.ListFunds(ctx, &cln.ListfundsRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "listing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
 
-	err = storeChannelFunds(db, clnFunds.Channels, nodeSettings)
+	err = storeChannelFunds(ctx, db, clnFunds.Channels, nodeSettings)
 	if err != nil {
 		return errors.Wrapf(err, "storing source channels for nodeId: %v", nodeSettings.NodeId)
 	}
@@ -80,9 +82,13 @@ func listAndProcessFunds(ctx context.Context, db *sqlx.DB, client client_ListFun
 	return nil
 }
 
-func storeChannelFunds(db *sqlx.DB,
+func storeChannelFunds(ctx context.Context,
+	db *sqlx.DB,
 	clnChannelFunds []*cln.ListfundsChannels,
 	nodeSettings cache.NodeSettingsCache) error {
+
+	_, span := otel.Tracer(name).Start(ctx, "storeChannelFunds")
+	defer span.End()
 
 	var channelStateSettingsList []cache.ChannelStateSettingsCache
 	for _, clnChannel := range clnChannelFunds {
