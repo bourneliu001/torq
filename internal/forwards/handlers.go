@@ -108,7 +108,7 @@ type forwardsTableRow struct {
 	TurnoverIn        float32     `json:"turnoverIn"`
 	TurnoverTotal     float32     `json:"turnoverTotal"`
 	LocalNodeIds      []int       `json:"localNodeIds"`
-	TorqNodeCssColour null.String `json:"torqNodeCssColour""`
+	TorqNodeCssColour null.String `json:"torqNodeCssColour"`
 }
 
 func getForwardsTableData(db *sqlx.DB, nodeIds []int,

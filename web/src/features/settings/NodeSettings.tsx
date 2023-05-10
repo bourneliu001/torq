@@ -68,6 +68,7 @@ const nodeConfigurationTemplate = {
   pingSystem: 0,
   customSettings: 0,
   nodeStartDate: undefined,
+  nodeCssColour: undefined,
 };
 
 const importFailedPayments = "importFailedPayments";
