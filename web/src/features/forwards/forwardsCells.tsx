@@ -19,7 +19,7 @@ export default function channelsCellRenderer(
   if (column.key === "alias" && !isTotalsRow) {
     return (
       <ChannelCell
-        color={row["color"] as string}
+        color={row["torqNodeCssColour"] as string}
         alias={row["alias"] as string}
         channelId={row.channelId}
         nodeId={row.peerNodeId}

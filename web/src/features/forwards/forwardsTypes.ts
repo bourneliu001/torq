@@ -31,4 +31,5 @@ export type Forward = {
   peerNodeId: number;
   torqNodeId: number;
   torqNodeName: string;
+  torqNodeCssColour: string;
 };
