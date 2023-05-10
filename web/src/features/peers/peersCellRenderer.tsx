@@ -21,6 +21,7 @@ export default function peerCellRenderer(
         peerNodeId={row.nodeId}
         torqNodeId={row.torqNodeId}
         connectionStatus={row.connectionStatus}
+        color={row.nodeCssColour}
       />
     );
   }

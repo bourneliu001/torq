@@ -22,6 +22,7 @@ type PeerNode struct {
 	PublicKey            string                      `json:"pubKey" db:"public_key"`
 	TorqNodeId           *int                        `json:"torqNodeId" db:"torq_node_id"`
 	TorqNodeAlias        *string                     `json:"nodeName" db:"node_name"`
+	NodeCssColour        *string                     `json:"nodeCssColour" db:"node_css_colour"`
 	Setting              *core.NodeConnectionSetting `json:"setting" db:"setting"`
 	ConnectionStatus     *ConnectionStatus           `json:"connectionStatus" db:"connection_status"`
 	Address              *string                     `json:"address" db:"address"`
@@ -72,7 +73,7 @@ func GetPeerNodes(db *sqlx.DB, network core.Network) ([]PeerNode, error) {
 		n.node_id,
 		ne.alias,
 		nch.torq_node_id,
-		netorq.alias AS node_name, -- TODO: Rename to torq node name in all table requests throughout Torq. 
+		netorq.alias AS node_name, -- TODO: Rename to torq node name in all table requests throughout Torq.
 		n.public_key,
 		nch.connection_status,
 		nch.setting,
@@ -87,7 +88,8 @@ func GetPeerNodes(db *sqlx.DB, network core.Network) ([]PeerNode, error) {
 		    WHEN connection_status = $1 THEN 0
 		    WHEN last_connection.connected_since IS NULL THEN 0
 		    ELSE  EXTRACT(EPOCH FROM (now() - last_connection.connected_since))::int
-		END seconds_connected
+		END seconds_connected,
+	    ncd.node_css_colour as node_css_colour
 	FROM Node n
 	LEFT JOIN (
 		SELECT LAST(node_id, created_on) as node_id,
@@ -147,5 +149,6 @@ func GetPeerNodes(db *sqlx.DB, network core.Network) ([]PeerNode, error) {
 		}
 		return nil, errors.Wrap(err, database.SqlExecutionError)
 	}
+
 	return nodes, nil
 }
