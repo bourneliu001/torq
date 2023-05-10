@@ -664,14 +664,15 @@ func processTorqInitialBoot(db *sqlx.DB) {
 		var key []byte
 		var pingSystem core.PingSystem
 		var customSettings core.NodeConnectionDetailCustomSettings
+		var nodeCssColour *string
 		err := db.QueryRow(`
 					SELECT implementation, grpc_address,
 					       tls_data, macaroon_data, certificate_data, key_data, ca_certificate_data,
-					       ping_system, custom_settings
+					       ping_system, custom_settings, node_css_colour
 					FROM node_connection_details
 					WHERE node_id=$1`, torqNode.NodeId).Scan(&implementation, &grpcAddress,
 			&tls, &macaroon, &certificate, &key, &caCertificate,
-			&pingSystem, &customSettings)
+			&pingSystem, &customSettings, &nodeCssColour)
 		if err != nil {
 			log.Error().Err(err).Msgf("Could not obtain desired state for nodeId: %v", torqNode.NodeId)
 			continue
@@ -742,6 +743,7 @@ func processTorqInitialBoot(db *sqlx.DB) {
 			KeyFileBytes:           key,
 			CaCertificateFileBytes: caCertificate,
 			CustomSettings:         customSettings,
+			NodeCssColour:          nodeCssColour,
 		})
 	}
 	cache.SetActiveCoreServiceState(services_helpers.RootService)

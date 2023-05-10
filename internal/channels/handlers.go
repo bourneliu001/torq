@@ -87,6 +87,7 @@ type ChannelBody struct {
 	OneMl                        string              `json:"oneMl"`
 	PeerAlias                    string              `json:"peerAlias"`
 	Private                      bool                `json:"private"`
+	NodeCssColour                *string             `json:"nodeCssColour"`
 }
 
 type PendingHtlcs struct {
@@ -164,13 +165,19 @@ func GetChannelsByNetwork(network core.Network) ([]ChannelBody, error) {
 	chain := core.Bitcoin
 	nodeIds := cache.GetAllTorqNodeIdsByNetwork(chain, network)
 	for _, nodeId := range nodeIds {
+		ncd := cache.GetNodeConnectionDetails(nodeId)
 		// Force Response because we don't care about balance accuracy
 		channelIds := cache.GetChannelStateChannelIds(nodeId, true)
 		channelsBodyByNode, err := GetChannelsByIds(nodeId, channelIds)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Obtain channels for nodeId: %v", nodeId)
 		}
-		channelsBody = append(channelsBody, channelsBodyByNode...)
+
+		for _, channel := range channelsBodyByNode {
+			channel.NodeCssColour = ncd.NodeCssColour
+			channelsBody = append(channelsBody, channel)
+		}
+
 	}
 	return channelsBody, nil
 }

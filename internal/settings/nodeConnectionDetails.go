@@ -39,6 +39,7 @@ type NodeConnectionDetails struct {
 	NodeStartDate          *time.Time                              `json:"nodeStartDate"  db:"node_start_date"`
 	CreateOn               time.Time                               `json:"createdOn" db:"created_on"`
 	UpdatedOn              *time.Time                              `json:"updatedOn"  db:"updated_on"`
+	NodeCssColour          *string                                 `json:"nodeCssColour" db:"node_css_colour"`
 }
 
 func GetNodeIdByGRPC(db *sqlx.DB, grpcAddress string) (int, error) {

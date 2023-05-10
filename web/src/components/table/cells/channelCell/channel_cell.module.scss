@@ -1,5 +1,14 @@
+.peerNameCell {
+  display: flex;
+  flex-direction: row;
+  background-color: var(--bg-default);
+  border-bottom: 1px solid var(--color-border-primary-faint);
+  white-space: nowrap;
+}
 .channelCellWrapper {
   row-gap: 8px;
+  display: flex;
+  flex-direction: column;
 }
 .channelCellWrapper .actionButtons {
   display: flex;

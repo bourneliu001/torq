@@ -104,10 +104,11 @@ type forwardsTableRow struct {
 	// Number of total forwards.
 	CountTotal uint64 `json:"countTotal"`
 
-	TurnoverOut   float32 `json:"turnoverOut"`
-	TurnoverIn    float32 `json:"turnoverIn"`
-	TurnoverTotal float32 `json:"turnoverTotal"`
-	LocalNodeIds  []int   `json:"localNodeIds"`
+	TurnoverOut       float32     `json:"turnoverOut"`
+	TurnoverIn        float32     `json:"turnoverIn"`
+	TurnoverTotal     float32     `json:"turnoverTotal"`
+	LocalNodeIds      []int       `json:"localNodeIds"`
+	TorqNodeCssColour null.String `json:"torqNodeCssColour"`
 }
 
 func getForwardsTableData(db *sqlx.DB, nodeIds []int,
@@ -141,7 +142,8 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 			coalesce((fw.count_in + fw.count_out), 0) as count_total,
 			coalesce(round(fw.amount_out / ce.capacity::numeric, 2), 0) as turnover_out,
 			coalesce(round(fw.amount_in / ce.capacity::numeric, 2), 0) as turnover_in,
-			coalesce(round((fw.amount_in + fw.amount_out) / ce.capacity::numeric, 2), 0) as turnover_total
+			coalesce(round((fw.amount_in + fw.amount_out) / ce.capacity::numeric, 2), 0) as turnover_total,
+			coalesce(ncd.node_css_colour, '') as torq_node_css_colour
 		from channel as c
 		left join (
 			select channel_id, last(event->'capacity', time) as capacity
@@ -241,6 +243,7 @@ func getForwardsTableData(db *sqlx.DB, nodeIds []int,
 			&c.TurnoverOut,
 			&c.TurnoverIn,
 			&c.TurnoverTotal,
+			&c.TorqNodeCssColour,
 		)
 		if err != nil {
 			return r, errors.Wrap(err, "SQL row scan")

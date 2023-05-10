@@ -1,0 +1,16 @@
+WITH colours AS (SELECT *,
+                        ROW_NUMBER() OVER () AS row_num
+                 FROM (SELECT unnest(array ['#BA93FA', '#85C4FF', '#FDC9F1', '#283B4C', '#2DC4BE', '#E18484', '#E1D4B7']) AS colour) AS subquery),
+     nodes_ordered AS (SELECT nc.node_id,
+                              ROW_NUMBER() OVER (ORDER BY node_id) AS row_num
+                       FROM node_connection_details AS nc
+                       WHERE nc.status_id != 3
+                       LIMIT 7),
+     combined AS (SELECT no.node_id, c.colour
+                  FROM nodes_ordered no
+                           JOIN colours c ON c.row_num = no.row_num)
+
+UPDATE node_connection_details AS ncd
+SET node_css_colour = c.colour
+FROM combined AS c
+WHERE ncd.node_id = c.node_id;

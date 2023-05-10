@@ -1,12 +1,12 @@
 import styles from "components/table/cells/cell.module.scss";
 import { ColumnMetaData } from "features/table/types";
 import DefaultCellRenderer from "features/table/DefaultCellRenderer";
-import AliasCell from "components/table/cells/alias/AliasCell";
 import { Forward } from "./forwardsTypes";
 import TagsCell from "components/table/cells/tags/TagsCell";
 import { GroupByOptions } from "features/viewManagement/types";
+import ChannelCell from "components/table/cells/channelCell/ChannelCell";
+import TextCell from "components/table/cells/text/TextCell";
 
-/* nodeIds={row.localNodeIds.filter((id) => [row.firstNodeId, row.secondNodeId].includes(id))} */
 export default function channelsCellRenderer(
   row: Forward,
   rowIndex: number,
@@ -16,19 +16,23 @@ export default function channelsCellRenderer(
   maxRow?: Forward,
   groupedBy?: GroupByOptions
 ): JSX.Element {
-  if (column.key === "alias") {
+  if (column.key === "alias" && !isTotalsRow) {
     return (
-      <AliasCell
-        current={row["alias"] as string}
+      <ChannelCell
+        color={row["torqNodeCssColour"] as string}
+        alias={row["alias"] as string}
         channelId={row.channelId}
-        nodeIds={[1]}
+        nodeId={row.peerNodeId}
         open={row["open"]}
         key={"alias" + rowIndex + columnIndex}
         className={column.locked ? styles.locked : ""}
-        isTotalsRow={isTotalsRow}
-        hideChannelControls={groupedBy === "peer"}
+        hideActionButtons={groupedBy === "peer"}
       />
     );
+  }
+
+  if (column.key === "alias" && isTotalsRow) {
+    return <TextCell text={"Total"} key={"alias" + rowIndex + columnIndex} className={styles.locked} />;
   }
 
   if (column.key === "tags") {

@@ -596,6 +596,13 @@ func fixBindFailures(c *gin.Context, ncd NodeConnectionDetails) (NodeConnectionD
 		ncd.NodeStartDate = nil
 	}
 
+	nodeCssColour := c.Request.Form.Get("nodeCssColour")
+	if nodeCssColour != "" {
+		ncd.NodeCssColour = &nodeCssColour
+	} else {
+		ncd.NodeCssColour = nil
+	}
+
 	return ncd, nil
 }
 

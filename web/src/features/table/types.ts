@@ -23,6 +23,7 @@ export type TableProps<T> = {
   totalRow?: T;
   maxRow?: T;
   cellRenderer: CellRendererFunction<T>;
+  rowFirstCellRenderer?: CellRendererFunction<T>;
   selectable?: boolean;
   selectedRowIds?: Array<number>;
   intercomTarget?: string;
@@ -38,15 +39,3 @@ export type CellRendererFunction<T> = (
   maxValues?: T,
   groupedBy?: GroupByOptions
 ) => JSX.Element;
-
-export type RowProp<T> = {
-  row: T;
-  rowIndex: number;
-  columns: Array<ColumnMetaData<T>>;
-  selectable?: boolean;
-  selected: boolean;
-  cellRenderer: CellRendererFunction<T>;
-  isTotalsRow?: boolean;
-  maxRow?: T;
-  groupedBy: GroupByOptions;
-};

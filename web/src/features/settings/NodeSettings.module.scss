@@ -162,3 +162,17 @@
   flex-direction: column;
   row-gap: 8px;
 }
+
+.colourSelectContainer {
+  alignItems: 'center';
+  display: flex;
+}
+
+.colourSelect {
+  border-radius: 2px;
+  align-self: center;
+  display: block;
+  margin-right: 8px;
+  height: 15px;
+  width: 100%;
+}

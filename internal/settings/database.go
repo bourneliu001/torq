@@ -527,14 +527,14 @@ func SetNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 		    certificate_file_name = $8, certificate_data = $9, key_file_name = $10, key_data = $11,
 			ca_certificate_file_name = $12, ca_certificate_data = $13,
 		    status_id = $14, ping_system = $15, updated_on = $16,
-			custom_settings = $17, node_start_date = $18
-		WHERE node_id = $19;`,
+			custom_settings = $17, node_start_date = $18, node_css_colour = $19
+		WHERE node_id = $20;`,
 		ncd.Implementation, ncd.Name, ncd.GRPCAddress,
 		ncd.TLSFileName, ncd.TLSDataBytes, ncd.MacaroonFileName, ncd.MacaroonDataBytes,
 		ncd.CertificateFileName, ncd.CertificateDataBytes, ncd.KeyFileName, ncd.KeyDataBytes,
 		ncd.CaCertificateFileName, ncd.CaCertificateDataBytes,
 		ncd.Status, ncd.PingSystem, ncd.UpdatedOn,
-		ncd.CustomSettings, ncd.NodeStartDate, ncd.NodeId)
+		ncd.CustomSettings, ncd.NodeStartDate, ncd.NodeCssColour, ncd.NodeId)
 	if err != nil {
 		return ncd, errors.Wrap(err, database.SqlExecutionError)
 	}
@@ -545,6 +545,7 @@ func SetNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 			TLSFileBytes:      ncd.TLSDataBytes,
 			MacaroonFileBytes: ncd.MacaroonDataBytes,
 			CustomSettings:    ncd.CustomSettings,
+			NodeCssColour:     ncd.NodeCssColour,
 		})
 	}
 	if ncd.GRPCAddress != nil &&
@@ -556,6 +557,7 @@ func SetNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 			KeyFileBytes:           ncd.KeyDataBytes,
 			CaCertificateFileBytes: ncd.CaCertificateDataBytes,
 			CustomSettings:         ncd.CustomSettings,
+			NodeCssColour:          ncd.NodeCssColour,
 		})
 	}
 	return ncd, nil
@@ -602,14 +604,14 @@ func addNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 		     tls_file_name, tls_data, macaroon_file_name, macaroon_data,
 		     certificate_file_name, certificate_data, key_file_name, key_data,
 		     ca_certificate_file_name, ca_certificate_data,
-		     status_id, ping_system, custom_settings, node_start_date, created_on, updated_on)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20);`,
+		     status_id, ping_system, custom_settings, node_start_date, created_on, updated_on, node_css_colour)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);`,
 		ncd.NodeId, ncd.Name, ncd.Implementation, ncd.GRPCAddress,
 		ncd.TLSFileName, ncd.TLSDataBytes, ncd.MacaroonFileName, ncd.MacaroonDataBytes,
 		ncd.CertificateFileName, ncd.CertificateDataBytes, ncd.KeyFileName, ncd.KeyDataBytes,
 		ncd.CaCertificateFileName, ncd.CaCertificateDataBytes,
 		ncd.Status, ncd.PingSystem, ncd.CustomSettings, ncd.NodeStartDate,
-		ncd.CreateOn, ncd.UpdatedOn)
+		ncd.CreateOn, ncd.UpdatedOn, ncd.NodeCssColour)
 	if err != nil {
 		return ncd, errors.Wrap(err, database.SqlExecutionError)
 	}
@@ -620,6 +622,7 @@ func addNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 			TLSFileBytes:      ncd.TLSDataBytes,
 			MacaroonFileBytes: ncd.MacaroonDataBytes,
 			CustomSettings:    ncd.CustomSettings,
+			NodeCssColour:     ncd.NodeCssColour,
 		})
 	}
 	if ncd.GRPCAddress != nil &&
@@ -631,6 +634,7 @@ func addNodeConnectionDetails(db *sqlx.DB, ncd NodeConnectionDetails) (NodeConne
 			KeyFileBytes:           ncd.KeyDataBytes,
 			CaCertificateFileBytes: ncd.CaCertificateDataBytes,
 			CustomSettings:         ncd.CustomSettings,
+			NodeCssColour:          ncd.NodeCssColour,
 		})
 	}
 	return ncd, nil

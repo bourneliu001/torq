@@ -43,6 +43,7 @@ export interface nodeConfiguration {
   pingSystem: number;
   customSettings: number;
   nodeStartDate?: Date;
+  nodeCssColour?: string;
 }
 
 export interface stringMap<T> {

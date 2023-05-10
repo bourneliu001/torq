@@ -6,7 +6,8 @@ import ToastContext from "features/toast/context";
 import { toastCategory } from "features/toast/Toasts";
 import { mergeServerError, ServerErrorType } from "components/errors/errors";
 import { useDisconnectPeerMutation, useReconnectPeerMutation } from "features/peers/peersApi";
-import styles from "components/table/cells/cell.module.scss";
+import styles from "components/table/cells/channelCell/channel_cell.module.scss";
+import cellStyles from "components/table/cells/cell.module.scss";
 import { useLocation } from "react-router-dom";
 import classNames from "classnames";
 import useTranslations from "services/i18n/useTranslations";
@@ -14,15 +15,16 @@ import { useContext, useEffect } from "react";
 import Button, { ColorVariant, LinkButton, SizeVariant } from "components/buttons/Button";
 import { userEvents } from "utils/userEvents";
 
-interface ChannelCell {
+interface PeerAliasCell {
   alias: string;
+  color?: string;
   peerNodeId: number;
   torqNodeId: number;
   connectionStatus: ConnectionStatus;
   className?: string;
 }
 
-function ChannelCell(props: ChannelCell) {
+function PeerAliasCell(props: PeerAliasCell) {
   const { t } = useTranslations();
   const { track } = userEvents();
   const location = useLocation();
@@ -115,9 +117,15 @@ function ChannelCell(props: ChannelCell) {
   );
 
   return (
-    <div className={classNames(styles.cell, styles.alignLeft, props.className, styles.channelCellWrapper, styles.locked)}>
-      {content}
+    <div className={classNames(cellStyles.cell, styles.peerNameCell, cellStyles.alignLeft, props.className)}>
+      <div
+        className={cellStyles.colorBar}
+        style={{
+          backgroundColor: props.color,
+        }}
+      />
+      <div className={classNames(styles.channelCellWrapper)}>{content}</div>
     </div>
   );
 }
-export default ChannelCell;
+export default PeerAliasCell;

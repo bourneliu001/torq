@@ -14,6 +14,7 @@ export type Peer = {
   dateLastConnected?: Date;
   secondsDisconnected: number;
   dateLastDisconnected?: Date;
+  nodeCssColour?: string;
 };
 
 export type ConnectPeerRequest = {

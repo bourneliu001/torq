@@ -12,7 +12,7 @@ import {
   Save20Regular as SaveIcon,
 } from "@fluentui/react-icons";
 import styles from "./NodeSettings.module.scss";
-import Select, {SelectOption, SelectOptions} from "features/forms/Select";
+import Select, { SelectOption, SelectOptions } from "features/forms/Select";
 import Spinny from "features/spinny/Spinny";
 import { toastCategory } from "features/toast/Toasts";
 import ToastContext from "features/toast/context";
@@ -41,6 +41,8 @@ import { format } from "date-fns";
 import { torqApi } from "apiSlice";
 import { useAppDispatch } from "store/hooks";
 import { userEvents } from "utils/userEvents";
+import { components, OptionProps, SingleValueProps } from "react-select";
+import PropTypes from "prop-types";
 
 interface nodeProps {
   nodeId: number;
@@ -66,6 +68,7 @@ const nodeConfigurationTemplate = {
   pingSystem: 0,
   customSettings: 0,
   nodeStartDate: undefined,
+  nodeCssColour: undefined,
 };
 
 const importFailedPayments = "importFailedPayments";
@@ -98,6 +101,50 @@ interface importProps {
   value: number;
   label?: string;
 }
+
+type ColourOption = {
+  value: string;
+};
+
+const colourOptions: ColourOption[] = [
+  { value: "#BA93FA" },
+  { value: "#85C4FF" },
+  { value: "#E18484" },
+  { value: "#2DC4BE" },
+  { value: "#E1D4B7" },
+  { value: "#84CEE1" },
+  { value: "#C875B6" },
+];
+
+const colourSelectSingleValue = ({ ...props }: SingleValueProps<unknown>) => {
+  const colourOption: ColourOption = props.data as ColourOption;
+  return (
+    <components.SingleValue {...props}>
+      <div className={styles.colourSelectContainer}>
+        <div className={styles.colourSelect} style={{ backgroundColor: colourOption.value }}></div>
+      </div>
+    </components.SingleValue>
+  );
+};
+
+colourSelectSingleValue.propTypes = {
+  data: PropTypes.object.isRequired,
+};
+
+const colourSelectOption = (props: OptionProps) => {
+  const colourOption = props.data as ColourOption;
+  return (
+    <components.Option {...props}>
+      <div className={styles.colourSelectContainer}>
+        <div className={styles.colourSelect} style={{ backgroundColor: colourOption.value }}></div>
+      </div>
+    </components.Option>
+  );
+};
+
+colourSelectOption.propTypes = {
+  data: PropTypes.object.isRequired,
+};
 
 const NodeSettings = React.forwardRef(function NodeSettings(
   { nodeId, collapsed, addMode, onAddSuccess }: nodeProps,
@@ -212,6 +259,7 @@ const NodeSettings = React.forwardRef(function NodeSettings(
     form.append("pingSystem", "" + nodeConfigurationState.pingSystem);
     form.append("customSettings", "" + nodeConfigurationState.customSettings);
     form.append("grpcAddress", nodeConfigurationState.grpcAddress ?? "");
+    form.append("nodeCssColour", "" + nodeConfigurationState.nodeCssColour);
     if (nodeConfigurationState.tlsFile) {
       form.append("tlsFile", nodeConfigurationState.tlsFile, nodeConfigurationState.tlsFileName);
     }
@@ -219,10 +267,18 @@ const NodeSettings = React.forwardRef(function NodeSettings(
       form.append("macaroonFile", nodeConfigurationState.macaroonFile, nodeConfigurationState.macaroonFileName);
     }
     if (nodeConfigurationState.caCertificateFile) {
-      form.append("caCertificateFile", nodeConfigurationState.caCertificateFile, nodeConfigurationState.caCertificateFileName);
+      form.append(
+        "caCertificateFile",
+        nodeConfigurationState.caCertificateFile,
+        nodeConfigurationState.caCertificateFileName
+      );
     }
     if (nodeConfigurationState.certificateFile) {
-      form.append("certificateFile", nodeConfigurationState.certificateFile, nodeConfigurationState.certificateFileName);
+      form.append(
+        "certificateFile",
+        nodeConfigurationState.certificateFile,
+        nodeConfigurationState.certificateFileName
+      );
     }
     if (nodeConfigurationState.keyFile) {
       form.append("keyFile", nodeConfigurationState.keyFile, nodeConfigurationState.keyFileName);
@@ -360,7 +416,7 @@ const NodeSettings = React.forwardRef(function NodeSettings(
     setNodeConfigurationState({
       ...nodeConfigurationState,
       tlsFile: file,
-      tlsFileName: file ? file.name : undefined
+      tlsFileName: file ? file.name : undefined,
     });
   };
   const handleMacaroonFileChange = (file: File | null) => {
@@ -511,9 +567,17 @@ const NodeSettings = React.forwardRef(function NodeSettings(
     return "";
   };
 
-  const implementationOptions: Array<SelectOption> = [{ value: "0", label: "LND"}, {value: "1", label: "CLN" }];
+  const implementationOptions: Array<SelectOption> = [
+    { value: "0", label: "LND" },
+    { value: "1", label: "CLN" },
+  ];
 
   const menuButton = <MoreIcon className={styles.moreIcon} />;
+
+  const handleNodeCssColourChange = (value: string) => {
+    setNodeConfigurationState({ ...nodeConfigurationState, nodeCssColour: value });
+  };
+
   return (
     <>
       {!addMode && (
@@ -590,7 +654,10 @@ const NodeSettings = React.forwardRef(function NodeSettings(
                     setCertificateEnabledState(true);
                     setKeyEnabledState(true);
                   }
-                  setNodeConfigurationState({ ...nodeConfigurationState, implementation: selectOptions?.value as number });
+                  setNodeConfigurationState({
+                    ...nodeConfigurationState,
+                    implementation: selectOptions?.value as number,
+                  });
                 }}
                 options={implementationOptions}
                 value={implementationOptions.find((io) => io.value == "" + nodeConfigurationState.implementation)}
@@ -624,7 +691,6 @@ const NodeSettings = React.forwardRef(function NodeSettings(
                     label={t.tlsCertificate}
                     onFileChange={handleTLSFileChange}
                     fileName={nodeConfigurationState?.tlsFileName}
-
                   />
                 </span>
               )}
@@ -678,6 +744,17 @@ const NodeSettings = React.forwardRef(function NodeSettings(
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNodeStartDateChange(e.target.value)}
                 />
               </span>
+              <Select
+                intercomTarget="settings-node-colour"
+                selectComponents={{ Option: colourSelectOption, SingleValue: colourSelectSingleValue }}
+                label={t.nodeColour}
+                onChange={(newValue: unknown) => {
+                  const value = newValue as ColourOption;
+                  handleNodeCssColourChange(value.value ?? undefined);
+                }}
+                options={colourOptions}
+                value={colourOptions.find((option) => option.value === nodeConfigurationState.nodeCssColour)}
+              />
               {addMode && (
                 <div className={styles.customImportSettings}>
                   <div
