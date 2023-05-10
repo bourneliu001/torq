@@ -1,6 +1,6 @@
 WITH colours AS (SELECT *,
                         ROW_NUMBER() OVER (ORDER BY colour) AS row_num
-                 FROM (SELECT unnest(array ['#85c4ff', '#354e66', '#6ca09e', '#4b473d', '#e18484', '#c875b6', '#9576c8']) AS colour) AS subquery),
+                 FROM (SELECT unnest(array ['#BA93FA', '#85C4FF', '#E18484', '#2DC4BE', '#E1D4B7', '#84CEE1', '#C875B6']) AS colour) AS subquery),
      nodes_ordered AS (SELECT nc.node_id,
                               ROW_NUMBER() OVER (ORDER BY node_id) AS row_num
                        FROM node_connection_details AS nc

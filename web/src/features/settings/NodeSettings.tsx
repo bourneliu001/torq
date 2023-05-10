@@ -107,13 +107,13 @@ type ColourOption = {
 };
 
 const colourOptions: ColourOption[] = [
-  { value: "#85c4ff" },
-  { value: "#354e66" },
-  { value: "#6ca09e" },
-  { value: "#4b473d" },
-  { value: "#e18484" },
-  { value: "#c875b6" },
-  { value: "#9576c8" },
+  { value: "#BA93FA" },
+  { value: "#85C4FF" },
+  { value: "#E18484" },
+  { value: "#2DC4BE" },
+  { value: "#E1D4B7" },
+  { value: "#84CEE1" },
+  { value: "#C875B6" },
 ];
 
 const colourSelectSingleValue = ({ ...props }: SingleValueProps<unknown>) => {
